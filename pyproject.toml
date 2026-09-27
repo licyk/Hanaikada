@@ -1,0 +1,85 @@
+[build-system]
+requires = ["setuptools", "pip", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hanaikada"
+description = "Browse, search and manage images made with Stable Diffusion WebUI, ComfyUI and InvokeAI"
+readme = "README.md"
+requires-python = ">=3.10"
+dynamic = ["version"]
+license = "GPL-3.0-only"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Multimedia :: Graphics :: Viewers",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    # uvicorn speaks WebSocket only when one of these is installed. Without it the socket falls
+    # back to long polling, which works but is slower and noisier.
+    "websockets>=12",
+    "python-socketio",
+    "pydantic",
+    "typer>=0.26.7",
+    "rich",
+    "Pillow>=10",
+    "piexif",
+    "send2trash",
+    "tomli-w",
+    "tomli; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+jxl = ["pillow-jxl-plugin"]
+# ty resolves the Python 3.10 TOML fallback on every host; httpx is what FastAPI's TestClient needs.
+dev = ["pytest", "ruff", "ty", "tomli", "httpx"]
+
+[project.scripts]
+hanaikada = "hanaikada.cli.app:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hanaikada*"]
+
+[tool.setuptools.package-data]
+"hanaikada.webui" = ["dist/**/*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "hanaikada.version.VERSION" }
+
+[tool.ruff]
+line-length = 180
+indent-width = 4
+extend-exclude = ["hanaikada/webui/dist", "hanaikada/webui/node_modules"]
+lint.ignore = [
+    "E402" # module-import-not-at-top-of-file
+]
+
+[tool.ty.environment]
+python-version = "3.10"
+
+[tool.ty.terminal]
+output-format = "concise"
+
+[tool.ty.src]
+include = ["hanaikada"]
+exclude = ["hanaikada/webui/dist", "hanaikada/webui/node_modules"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "live: tests that need something outside this repository (deselected by default)",
+    "corpus: run every parser over the local WebUI, ComfyUI and InvokeAI outputs (deselected by default)",
+]
+addopts = "-m 'not live and not corpus'"

@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+/dist/
+.pytest_cache/
+.ruff_cache/
+.venv/
+node_modules/
+hanaikada/webui/dist/
+hanaikada/webui/openapi.json

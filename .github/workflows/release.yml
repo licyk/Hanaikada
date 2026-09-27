@@ -1,0 +1,194 @@
+name: Release
+
+# Version changes on master, version tags and manual runs publish to PyPI after all checks pass.
+# Tag-triggered runs also verify the tag matches hanaikada/version.py.
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+    paths: ['hanaikada/version.py']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # scripts/build_wheel.py reads this: the type-check runs as its own job below.
+  CI: '1'
+
+jobs:
+  python:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.11', '3.12', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e ".[dev]"
+      - name: Lint
+        run: |
+          python -m ruff check hanaikada tests scripts
+          python -m ruff format --check hanaikada tests scripts
+      - name: Tests
+        run: python -m pytest -q
+      - name: Python types (ty)
+        run: python scripts/dev.py typecheck-py --python-version "${{ matrix.python }}" --output-format github --no-progress
+
+  pydantic-v1:
+    name: Pydantic v1 / Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Pydantic v1 does not support Python 3.14.
+        python: ['3.10', '3.13']
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e ".[dev]" "pydantic<2" "fastapi<0.126"
+      - name: Tests
+        run: python -m pytest -q
+      - name: Python types (ty)
+        run: python scripts/dev.py typecheck-py --python-version "${{ matrix.python }}" --output-format github --no-progress
+
+  web:
+    name: Web UI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+          cache: pip
+      - uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: latest
+      - run: pip install -e ".[dev]"
+      - run: bun install --frozen-lockfile
+        working-directory: hanaikada/webui
+      - name: Tests and type-check
+        run: |
+          bun run test
+          bun run typecheck
+        working-directory: hanaikada/webui
+      - name: The committed API types match the schema
+        run: python scripts/dev.py typegen-check
+
+  build:
+    name: Build the wheel
+    needs: [python, pydantic-v1, web]
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+          cache: pip
+      - uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: latest
+      - run: pip install --upgrade build twine
+
+      - name: The tag and hanaikada/version.py agree
+        id: version
+        run: |
+          version=$(python -c "from hanaikada.version import VERSION; print(VERSION)")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Package version: $version"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            tag="${GITHUB_REF_NAME#v}"
+            if [ "$tag" != "$version" ]; then
+              echo "::error::Tag $GITHUB_REF_NAME does not match VERSION $version in hanaikada/version.py"
+              exit 1
+            fi
+          fi
+
+      # Builds the web UI with bun first: setuptools packages only the files that exist then.
+      - name: Build
+        run: python scripts/build_wheel.py --ci
+
+      - name: The wheel carries the web UI
+        run: |
+          python - <<'PY'
+          import pathlib, zipfile
+          wheel = next(pathlib.Path("dist").glob("*.whl"))
+          names = zipfile.ZipFile(wheel).namelist()
+          assert any(n.startswith("hanaikada/webui/dist/") for n in names), "the wheel has no web UI"
+          assert "hanaikada/webui/dist/index.html" in names, "the wheel has no index.html"
+          print(wheel.name, f"{wheel.stat().st_size / 1e6:.1f} MB", len(names), "files")
+          PY
+
+      - name: Check the metadata
+        run: twine check dist/*
+
+      - name: The wheel installs and runs
+        run: |
+          python -m venv /tmp/probe
+          /tmp/probe/bin/pip install --quiet dist/*.whl
+          /tmp/probe/bin/hanaikada version
+          /tmp/probe/bin/python -c "import hanaikada; print(hanaikada.VERSION)"
+
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: distributions
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # The environment can require an approval before a release.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/hanaikada
+    steps:
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+      - name: Install Twine
+        run: python -m pip install --upgrade twine
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          name: distributions
+          path: dist/
+      - name: Publish
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
+        run: python -m twine upload dist/* --skip-existing --non-interactive
+
+  github-release:
+    name: GitHub release
+    needs: [build, publish]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          name: distributions
+          path: dist/
+      - name: Create the release with the built files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --generate-notes
