@@ -35,8 +35,7 @@ python -m pip install hanaikada
 hanaikada --help
 ```
 
-Python 3.10 or newer. The web UI is bundled into the package; you do not need Node. JPEG XL
-images need an extra: `pip install "hanaikada[jxl]"`.
+Python 3.10 or newer. The web UI is bundled into the package; you do not need Node.
 
 Pydantic v1 and v2 are supported (v1 with Python 3.10–3.13 and `fastapi<0.126`).
 

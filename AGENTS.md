@@ -31,9 +31,9 @@ tests/         core/ api/ cli/, fixtures/metadata/ (1×1 images carrying real ch
 ```
 
 - **Layer rule** (`tests/core/test_architecture.py`): `core` imports only the standard library,
-  `pydantic`, `PIL`, `piexif` — no web/CLI framework, `httpx`, `hanaikada.api` or `.cli`. Each
-  operation is one core method on `Record` models; routes and commands only parse, call and
-  shape, so the API's JSON equals the CLI's `--json`.
+  `pydantic`, `PIL` (with `pillow_jxl`) and `piexif` — no web/CLI framework, `httpx`,
+  `hanaikada.api` or `.cli`. Each operation is one core method on `Record` models; routes and
+  commands only parse, call and shape, so the API's JSON equals the CLI's `--json`.
 - `core/context.py:build_services()` builds everything once: the API keeps it on
   `app.state.services` (`ServicesDep`), the CLI opens and closes it per command
   (`open_services()`), tests pass `environ=`. No global locator.
@@ -102,7 +102,8 @@ platform and a `parse_error`.
   chunks sit). Pillow writes `tEXt` for Latin-1 text and `iTXt` otherwise; ComfyUI escapes
   non-ASCII, so none of the three platforms puts UTF-8 in `tEXt`. The walker still tries UTF-8
   first, for third-party writers. Decompressed text is capped at 64 MB; XMP is reported, not kept.
-- Other formats open lazily in Pillow; EXIF via `piexif`, a manual IFD walk as fallback;
+- Other formats open lazily in Pillow — always through `core/imaging.py`, which registers JPEG XL
+  (`pillow-jxl-plugin` works only once imported); EXIF via `piexif`, a manual IFD walk as fallback;
   `UserComment` with `UNICODE` (BE, or LE by zero-byte position), `ASCII`, `JIS` or no prefix. The
   orientation swaps the reported size. A `<stem>.txt` sidecar is read only when the file has no
   generation text.
@@ -325,7 +326,7 @@ and model are set wherever the format has them. vitest + vue-tsc cover the web r
   files. No WebUI "send to".
 - Watching polls mtimes (no inotify); a network share may need a longer interval.
 - Big seeds beyond 2⁵³ reach the browser rounded under Pydantic v1.
-- NovelAI and JPEG XL (the `jxl` extra) untested on real files; FTS5 trigram unconfirmed on
+- NovelAI and JPEG XL are tested on synthetic files only; FTS5 trigram unconfirmed on
   Windows Python; Windows untested overall.
 - The web UI was driven in headless Chromium only (not Firefox or Safari; no desktop file drop).
 - A zip download is assembled in browser memory before it is saved.

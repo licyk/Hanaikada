@@ -14,7 +14,7 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 
-from PIL import Image, ImageOps
+from hanaikada.core.imaging import Image, ImageOps
 
 logger = logging.getLogger(__name__)
 

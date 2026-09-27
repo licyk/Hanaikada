@@ -26,14 +26,18 @@ classifiers = [
 dependencies = [
     "fastapi",
     "uvicorn",
-    # uvicorn speaks WebSocket only when one of these is installed. Without it the socket falls
-    # back to long polling, which works but is slower and noisier.
-    "websockets>=12",
+    # uvicorn speaks WebSocket only when this is installed; without it the socket falls back to
+    # long polling. No version bound: 11 works (the SD WebUI's Gradio 3 needs <12).
+    "websockets",
     "python-socketio",
     "pydantic",
     "typer>=0.26.7",
     "rich",
-    "Pillow>=10",
+    # No version bound: 9.5 works, and a bound would upgrade the SD WebUI's pinned Pillow when
+    # installed into its environment. AVIF needs a Pillow recent enough to read it.
+    "Pillow",
+    # Registers JPEG XL with Pillow (loaded by ``core/imaging.py``).
+    "pillow-jxl-plugin",
     "piexif",
     "send2trash",
     "tomli-w",
@@ -41,7 +45,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-jxl = ["pillow-jxl-plugin"]
 # ty resolves the Python 3.10 TOML fallback on every host; httpx is what FastAPI's TestClient needs.
 dev = ["pytest", "ruff", "ty", "tomli", "httpx"]
 

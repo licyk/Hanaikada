@@ -145,3 +145,16 @@ def test_xmp_is_reported_not_kept():
     raw = read_bytes(png_bytes([text_chunk("XML:com.adobe.xmp", "<x:xmpmeta/>", "iTXt")]))
     assert "XML:com.adobe.xmp" not in raw.chunks
     assert raw.info["XMP"].startswith("present")
+
+
+def test_jpeg_xl_is_read_through_the_plugin(tmp_path):
+    from hanaikada.core.imaging import Image as PluginImage
+    from hanaikada.core.library.thumbnails import ThumbnailService
+
+    source = tmp_path / "00001-1234567890.jxl"
+    PluginImage.new("RGB", (600, 300), "red").save(source, "JXL", exif=user_comment_exif(INFOTEXT))
+    raw = read_path(source)
+    assert (raw.format, raw.width, raw.height) == ("JXL", 600, 300)
+    assert raw.chunks["UserComment"] == INFOTEXT
+    with PluginImage.open(ThumbnailService(tmp_path / "cache").get(source, 128).path) as thumb:
+        assert thumb.size == (256, 128)

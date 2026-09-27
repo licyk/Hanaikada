@@ -15,9 +15,8 @@ import zlib
 from pathlib import Path
 from typing import Any, BinaryIO
 
-from PIL import Image
-
 from hanaikada.core.errors import UnsupportedFileError
+from hanaikada.core.imaging import Image
 from hanaikada.core.metadata.models import RawMetadata
 
 logger = logging.getLogger(__name__)
