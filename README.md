@@ -118,4 +118,4 @@ python scripts/dev.py check        # what CI runs
 
 ## Licence
 
-GPL-3.0, as the SD Model Hub code it is built on.
+GPL-3.0.
