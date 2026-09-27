@@ -5,7 +5,8 @@ import type { MenuItem } from '@/ui/AppMenu.vue';
 
 /**
  * A menu at a point: a right-click or a long press on a grid cell. Rendered at the end of the
- * document, kept inside the window, closed by Escape, a click elsewhere or a scroll.
+ * document, kept inside the window, closed by Escape, a click elsewhere or a scroll of what is
+ * behind it (scrolling the menu's own long list keeps it open).
  * An item with ``divider`` draws a line above itself.
  */
 const props = defineProps<{ items: (MenuItem & { divider?: boolean })[]; x: number; y: number }>();
@@ -41,18 +42,22 @@ const onKey = (e: KeyboardEvent) => {
   }
 };
 const close = () => (open.value = false);
+// Scroll events are listened to in the capture phase, so the menu's own list scrolling arrives here too.
+const onScroll = (e: Event) => {
+  if (!list.value?.contains(e.target as Node)) close();
+};
 
 function listen(on: boolean) {
   if (on) {
     document.addEventListener('pointerdown', onDoc, true);
     document.addEventListener('keydown', onKey, true);
-    window.addEventListener('scroll', close, true);
+    window.addEventListener('scroll', onScroll, true);
     window.addEventListener('resize', close);
     window.addEventListener('blur', close);
   } else {
     document.removeEventListener('pointerdown', onDoc, true);
     document.removeEventListener('keydown', onKey, true);
-    window.removeEventListener('scroll', close, true);
+    window.removeEventListener('scroll', onScroll, true);
     window.removeEventListener('resize', close);
     window.removeEventListener('blur', close);
   }

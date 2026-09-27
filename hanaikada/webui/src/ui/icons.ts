@@ -66,6 +66,7 @@ export {
   Scan,
   ScanSearch,
   Search,
+  Send,
   Settings,
   Shuffle,
   Sparkles,

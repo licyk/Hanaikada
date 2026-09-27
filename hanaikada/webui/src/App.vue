@@ -15,6 +15,7 @@ import Viewer from '@/components/Viewer.vue';
 import { useI18n } from '@/i18n';
 import { addressOf } from '@/router';
 import { usePreferencesStore } from '@/stores/preferences';
+import { useHostStore } from '@/stores/host';
 import { useScanStore } from '@/stores/scan';
 import { useUploadsStore } from '@/stores/uploads';
 import { applyTheme, watchSystemTheme } from '@/theme/applyTheme';
@@ -32,6 +33,8 @@ watch(locale, (l) => (document.documentElement.lang = l), { immediate: true });
 const stopTheme = watchSystemTheme(themeOptions);
 
 onMounted(() => {
+  // Framed by the SD WebUI or ComfyUI extension: learn what it takes ("Send to …").
+  useHostStore().connect();
   connectSocket(qc);
   prefs.loadFromServer();
 });

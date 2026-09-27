@@ -48,6 +48,12 @@ export default {
     ascending: 'Ascending',
     descending: 'Descending',
   },
+  send: {
+    menu: 'Send to…',
+    targets: { txt2img: 'Send to txt2img', img2img: 'Send to img2img', inpaint: 'Send to inpaint', extras: 'Send to Extras', workflow: 'Open workflow', loadImage: 'Send to Load Image' },
+    sent: '{target}: done',
+    failed: '{target}: {message}',
+  },
   browse: {
     allFolders: 'All folders',
     allFoldersHint: 'The output folders of every root, side by side. Open one to browse it in its root.',

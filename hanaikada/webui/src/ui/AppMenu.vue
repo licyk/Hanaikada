@@ -63,7 +63,11 @@ const onKey = (e: KeyboardEvent) => {
     e.preventDefault();
   }
 };
-const onReflow = () => (open.value ? place() : undefined);
+// Follows its trigger when a container scrolls; its own list scrolling moves nothing.
+const onReflow = (e?: Event) => {
+  if (!open.value || (e?.type === 'scroll' && list.value?.contains(e.target as Node))) return;
+  place();
+};
 
 watch(open, async (v) => {
   if (v) {
@@ -125,7 +129,7 @@ const toggle = () => (open.value = !open.value);
 <style scoped>
 .menu-root { display: inline-flex; }
 .menu {
-  position: fixed; z-index: 35; padding: var(--app-space-2) 0; overflow-y: auto;
+  position: fixed; z-index: 60; /* above the viewer, the compare view and dialogs, like ContextMenu */ padding: var(--app-space-2) 0; overflow-y: auto;
   background: var(--md-sys-color-surface-container); border-radius: var(--md-sys-shape-corner-extra-small); box-shadow: var(--app-elevation-2);
 }
 .item {

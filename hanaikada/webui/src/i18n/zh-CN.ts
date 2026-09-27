@@ -48,6 +48,12 @@ export default {
     ascending: '升序',
     descending: '降序',
   },
+  send: {
+    menu: '发送到…',
+    targets: { txt2img: '发送到文生图', img2img: '发送到图生图', inpaint: '发送到局部重绘', extras: '发送到后期处理', workflow: '打开工作流', loadImage: '发送到加载图像节点' },
+    sent: '{target}：完成',
+    failed: '{target}：{message}',
+  },
   browse: {
     allFolders: '全部文件夹',
     allFoldersHint: '所有根目录的输出文件夹并列显示。打开其中一个即可在其根目录中浏览。',

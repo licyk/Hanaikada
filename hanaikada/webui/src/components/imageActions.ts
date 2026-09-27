@@ -11,11 +11,13 @@ import { keys } from '@/api/queries/keys';
 import { useLibraryMutations } from '@/api/queries/library';
 import { useCustomTags, useTagMutations } from '@/api/queries/tags';
 import type { ImageDetail, ImageItem, PathRef } from '@/api/types';
+import type { HostTarget } from '@/host/bridge';
 import { type GridEntry, isWholeRoot } from '@/components/gridKeyboard';
 import { useI18n } from '@/i18n';
 import { toInfotext } from '@/metadata/infotext';
 import { encodeQuery } from '@/search/url';
 import { useDialogsStore } from '@/stores/dialogs';
+import { useHostStore } from '@/stores/host';
 import { icons, type MenuItem, useSnackbar } from '@/ui';
 
 export type ActionId =
@@ -41,7 +43,9 @@ export type ActionId =
   | 'similarModel'
   | 'similarPrompt'
   | 'openFolder'
-  | 'rescanFolder';
+  | 'rescanFolder'
+  /** Hand the file to the application framing Hanaikada (``stores/host.ts``). */
+  | `sendTo:${string}`;
 
 export async function copyText(text: string): Promise<void> {
   try {
@@ -59,6 +63,11 @@ export async function copyText(text: string): Promise<void> {
   }
 }
 
+/** Targets Hanaikada names itself; a host may name others. */
+const KNOWN_TARGETS = ['txt2img', 'img2img', 'inpaint', 'extras', 'workflow', 'loadImage'];
+// Where the WebUI puts its infotext, in the order it reads them.
+const INFOTEXT_CHUNKS = ['parameters', 'UserComment', 'comment', 'sidecar:txt'];
+
 export function useImageActions() {
   const { t } = useI18n();
   const qc = useQueryClient();
@@ -66,6 +75,7 @@ export function useImageActions() {
   const meta = useMeta();
   const snackbar = useSnackbar();
   const dialogs = useDialogsStore();
+  const host = useHostStore();
   const library = useLibraryMutations();
   const tagMutations = useTagMutations();
   const customTags = useCustomTags();
@@ -80,6 +90,42 @@ export function useImageActions() {
       queryFn: () => unwrap(api.GET('/api/v1/images/by-path', { params: { query: { root_id: item.rootId, path: item.path } } })),
       staleTime: 60_000,
     });
+  }
+
+  /**
+   * The image's parameters as an A1111 infotext: a WebUI image's own text, exactly as written;
+   * anything else's rebuilt from its metadata, so a ComfyUI image sends its real prompt. Null when
+   * there is nothing to say.
+   */
+  async function infotextFor(item: ImageItem): Promise<string | null> {
+    const d = await detail(item);
+    if (d.info.platform === 'sd-webui') {
+      const key = INFOTEXT_CHUNKS.find((k) => d.chunks.includes(k));
+      if (key) return (await fetch(chunkUrl(d.record.id, key, true))).text();
+    }
+    // Without a prompt or steps there are no parameters to hand over, only noise ("Version: …").
+    if (!d.info.prompt && d.info.steps == null) return null;
+    return toInfotext(d.info);
+  }
+
+  const targetLabel = (target: HostTarget) => target.label ?? (KNOWN_TARGETS.includes(target.id) ? t(`send.targets.${target.id}`) : target.id);
+  /** "Send to …" items for one file, from what the framing application takes. */
+  const sendItems = (item: ImageItem): MenuItem[] => host.targetsFor(item).map((target) => ({ id: `sendTo:${target.id}`, label: targetLabel(target), icon: icons.Send }));
+
+  async function sendTo(targetId: string, item: ImageItem) {
+    const target = host.info?.targets.find((x) => x.id === targetId);
+    if (!target) return;
+    const label = targetLabel(target);
+    const needsText = !target.needs?.length || target.needs.includes('infotext');
+    const infotext = needsText && item.kind === 'image' ? await infotextFor(item).catch(() => null) : null;
+    const url = new URL(fileUrl(item.rootId, item.path, item.version), window.location.href).href;
+    const result = await host.send(target, {
+      item: { root_id: item.rootId, path: item.path, name: item.name, kind: item.kind, url, version: item.version, size: item.size },
+      infotext,
+      platform: item.image?.platform ?? null,
+    });
+    if (result.ok) snackbar.show(t('send.sent', { target: label }));
+    else snackbar.error(t('send.failed', { target: label, message: result.message ?? '' }));
   }
 
   /** The menu for what is selected; ``entries`` is the selection, or the one entry clicked. */
@@ -98,6 +144,7 @@ export function useImageActions() {
       const item = single.item;
       const platform = item.image?.platform;
       items.push({ id: 'open', label: t('menu.open'), icon: icons.Expand }, { id: 'openNewTab', label: t('menu.openNewTab'), icon: icons.ExternalLink });
+      sendItems(item).forEach((send, i) => items.push({ ...send, divider: i === 0 }));
       if (item.kind === 'image') {
         items.push(isFavorite(item) ? { id: 'unfavorite', label: t('menu.unfavorite'), icon: icons.Heart, divider: true } : { id: 'favorite', label: t('menu.favorite'), icon: icons.Heart, divider: true });
         items.push({ id: 'tags', label: t('menu.tags'), icon: icons.Tag });
@@ -146,6 +193,11 @@ export function useImageActions() {
   /** Run an action over entries. ``openImage`` and ``openFolder`` come from the screen that asked. */
   async function run(id: ActionId, entries: GridEntry[], hooks: { openImage?: (item: ImageItem) => void; openFolder?: (path: string, rootId: string) => void; afterDelete?: () => void } = {}) {
     const images = entries.filter((e): e is Extract<GridEntry, { kind: 'image' }> => e.kind === 'image').map((e) => e.item);
+    if (id.startsWith('sendTo:')) {
+      const target = entries.find((e): e is Extract<GridEntry, { kind: 'image' }> => e.kind === 'image');
+      if (target) await sendTo(id.slice('sendTo:'.length), target.item).catch((e: Error) => snackbar.error(e.message));
+      return;
+    }
     // Nothing moves, renames or deletes a whole root, whichever way the action was asked for.
     if ((['moveTo', 'copyTo', 'rename', 'delete'] as ActionId[]).includes(id)) entries = entries.filter((e) => !isWholeRoot(e));
     if (!entries.length) return;
@@ -184,10 +236,7 @@ export function useImageActions() {
           break;
         }
         case 'copyInfotext': {
-          const d = await detail(item);
-          let text = toInfotext(d.info);
-          if (d.chunks.includes('parameters')) text = await (await fetch(chunkUrl(d.record.id, 'parameters', true))).text();
-          await copyText(text);
+          await copyText((await infotextFor(item)) ?? '');
           snackbar.show(t('common.copied'));
           break;
         }
@@ -237,5 +286,5 @@ export function useImageActions() {
     }
   }
 
-  return { menuFor, run, favoriteId, isFavorite, setFavorite, detail };
+  return { menuFor, run, favoriteId, isFavorite, setFavorite, detail, sendItems };
 }

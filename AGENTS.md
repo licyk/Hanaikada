@@ -13,7 +13,8 @@ compare view) served by the same Python process.
   Hub's 7865 and IIB's 7866), GPL-3.0 (reused code is GPL).
 - Skeleton from SD Model Hub (settings, events, db, security, ports, CLI factory, embedding, the
   UI's theme, `ui/`, motion); indexing ideas from sd-webui-infinite-image-browsing (IIB).
-- No network requests of its own. Out of scope: AI features, WebUI "send to", multi-user, NSFW
+- No network requests of its own. "Send to" txt2img/img2img or a ComfyUI canvas exists only
+  through a host extension (§8, host bridge). Out of scope: AI features, multi-user, NSFW
   detection (blur is by tag, `content.blur_tags`).
 
 ## 2. Layout and layers
@@ -255,6 +256,18 @@ served only inside output folders** (an install root never serves `config.json`)
 - **Static UI** (`api/static.py`): `dist/` found through `hanaikada.webui.__path__` (checkout or
   wheel); missing `index.html` → API only, with a warning. `assets/*` are immutable for a year,
   the rest `no-cache`; the SPA fallback to `index.html` only for requests accepting `text/html`.
+- **Host bridge** (`webui/src/host/bridge.ts`, `stores/host.ts`): a framed Hanaikada learns what its
+  host takes and hands it files, for the SD WebUI and ComfyUI extensions' "Send to …". Messages
+  are `{ns: 'hanaikada', v: 1, type, …}` between the frame and `window.parent`, **on Hanaikada's own
+  origin only** (both extensions embed it same-origin). Hanaikada sends `hello` at start (repeated
+  until answered); the host answers `host` `{host: {name, targets: [{id, label?, kinds?, platforms?,
+  needs?}]}}` (`kinds` default `['image']`; `targets: []` withdraws); Hanaikada sends `send` `{id,
+  target, payload: {item: {root_id, path, name, kind, url, version, size}, infotext, platform}}` and
+  the host answers `result` `{id, ok, message?}` (20 s timeout). Known ids with Hanaikada's own
+  labels: `txt2img img2img inpaint extras workflow loadImage`. `infotext` is a WebUI image's own
+  text, else rebuilt from its metadata (`toInfotext`), else null (no prompt and no steps) — a host
+  then sends the image alone, never stale parameters. The targets appear in every action menu and
+  as the viewer's Send button; without a host nothing shows.
 - **Embedding** (`embed.py`): `HanaikadaServer(...).start()/stop()` and `ImageRoot`. Pinned
   settings and locked roots can't be changed anywhere (`/app/meta` reports `roots_locked`). A
   host mounting `create_app(services)` itself enters `app.router.lifespan_context` and closes the
@@ -330,7 +343,8 @@ and model are set wherever the format has them. vitest + vue-tsc cover the web r
 
 - No metadata for video and audio (listed and playable only; WebUI video `description`, ComfyUI
   WebM/MP4/audio tags, InvokeAI-fork MP4 JSON sidecars), nor for Fooocus, SwarmUI or stealth-PNG
-  files. No WebUI "send to".
+  files. "Send to" needs the SD WebUI or ComfyUI extension to answer the host bridge; standalone
+  Hanaikada has none.
 - Watching polls mtimes (no inotify); a network share may need a longer interval.
 - Big seeds beyond 2⁵³ reach the browser rounded under Pydantic v1.
 - NovelAI and JPEG XL are tested on synthetic files only; FTS5 trigram unconfirmed on

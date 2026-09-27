@@ -11,7 +11,7 @@ import { type ShortcutAction, usePreferencesStore } from '@/stores/preferences';
 import { useViewerStore } from '@/stores/viewer';
 import { useWindowClass } from '@/theme/breakpoints';
 import { formatBytes } from '@/format';
-import { AppButton, AppIcon, ContextMenu, IconButton, ProgressCircle, icons, type MenuItem } from '@/ui';
+import { AppButton, AppIcon, AppMenu, ContextMenu, IconButton, ProgressCircle, icons, type MenuItem } from '@/ui';
 
 /**
  * The full-screen viewer over whichever list opened it. ← → walk that list and fetch its next page
@@ -219,6 +219,8 @@ function run(id: ActionId) {
 }
 
 const menuItems = computed<(MenuItem & { divider?: boolean })[]>(() => (item.value ? actions.menuFor([entry(item.value)]).filter((m) => m.id !== 'open') : []));
+// What the framing application takes ("Send to txt2img", "Open workflow"); empty on its own.
+const sendItems = computed(() => (item.value ? actions.sendItems(item.value) : []));
 function openMenu(event: MouseEvent) {
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
   Object.assign(menu, { open: true, x: rect.right - 220, y: rect.bottom });
@@ -352,6 +354,9 @@ const strip = computed(() => {
           <!-- Beside a player a ▶ would read as "play this"; the slideshow key still works there. -->
           <IconButton v-if="isImage || playing" :icon="playing ? icons.Pause : icons.Play" :label="t('viewer.slideshow')" @click="playing = !playing" />
           <IconButton v-if="isImage" :icon="icons.Heart" :label="t('viewer.favorite')" :class="{ fav: favorite }" @click="run(favorite ? 'unfavorite' : 'favorite')" />
+          <AppMenu v-if="sendItems.length" :items="sendItems" align="end" @select="run($event as ActionId)">
+            <template #default="{ toggle }"><IconButton :icon="icons.Send" :label="t('send.menu')" @click="toggle" /></template>
+          </AppMenu>
           <IconButton v-if="!compact" :icon="icons.Download" :label="t('common.download')" @click="run('download')" />
           <IconButton v-if="!compact" :icon="icons.Trash2" :label="t('common.delete')" @click="run('delete')" />
           <IconButton :icon="icons.Info" :label="t('viewer.info')" :tonal="prefs.prefs.infoOpen" @click="prefs.prefs.infoOpen = !prefs.prefs.infoOpen" />
