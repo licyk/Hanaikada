@@ -4,7 +4,7 @@ name: Release
 # Tag-triggered runs also verify the tag matches hanaikada/version.py.
 on:
   push:
-    branches: [master]
+    branches: [main]
     tags: ['v*']
     paths: ['hanaikada/version.py']
   workflow_dispatch:
