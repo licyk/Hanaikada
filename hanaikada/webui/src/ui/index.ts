@@ -51,7 +51,7 @@ export { default as Tooltip } from '@/ui/Tooltip.vue';
 export { default as TopAppBar } from '@/ui/TopAppBar.vue';
 export { default as VirtualGrid } from '@/ui/VirtualGrid.vue';
 export * as icons from '@/ui/icons';
-export { collapseHooks, staggerStyle, TRANSITIONS } from '@/ui/motion/transitions';
+export { collapseHooks, prefersReducedMotion, staggerStyle, TRANSITIONS } from '@/ui/motion/transitions';
 export { useElementHeight } from '@/ui/useElementHeight';
 export { useKeepScroll } from '@/ui/useKeepScroll';
 export { useSnackbar } from '@/ui/useSnackbar';

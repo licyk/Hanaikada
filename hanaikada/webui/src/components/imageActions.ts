@@ -85,6 +85,8 @@ export function useImageActions() {
   /** The menu for what is selected; ``entries`` is the selection, or the one entry clicked. */
   function menuFor(entries: GridEntry[]): (MenuItem & { divider?: boolean })[] {
     const images = entries.filter((e): e is Extract<GridEntry, { kind: 'image' }> => e.kind === 'image').map((e) => e.item);
+    // Favourites and tags live on indexed images; videos, audio and other files are not indexed.
+    const taggable = images.filter((i) => i.kind === 'image');
     const folders = entries.filter((e) => e.kind === 'folder');
     const single = entries.length === 1 ? entries[0] : null;
     const local = !!meta.data.value?.local;
@@ -96,9 +98,9 @@ export function useImageActions() {
       const item = single.item;
       const platform = item.image?.platform;
       items.push({ id: 'open', label: t('menu.open'), icon: icons.Expand }, { id: 'openNewTab', label: t('menu.openNewTab'), icon: icons.ExternalLink });
-      items.push(isFavorite(item) ? { id: 'unfavorite', label: t('menu.unfavorite'), icon: icons.Heart, divider: true } : { id: 'favorite', label: t('menu.favorite'), icon: icons.Heart, divider: true });
-      items.push({ id: 'tags', label: t('menu.tags'), icon: icons.Tag });
       if (item.kind === 'image') {
+        items.push(isFavorite(item) ? { id: 'unfavorite', label: t('menu.unfavorite'), icon: icons.Heart, divider: true } : { id: 'favorite', label: t('menu.favorite'), icon: icons.Heart, divider: true });
+        items.push({ id: 'tags', label: t('menu.tags'), icon: icons.Tag });
         items.push({ id: 'copyPrompt', label: t('menu.copyPrompt'), icon: icons.Copy, divider: true }, { id: 'copyInfotext', label: t('menu.copyInfotext'), icon: icons.FileText });
       }
       items.push({ id: 'download', label: t('menu.download'), icon: icons.Download, divider: true });
@@ -112,8 +114,8 @@ export function useImageActions() {
         );
       }
     } else if (images.length > 1) {
-      items.push({ id: 'favorite', label: t('menu.favorite'), icon: icons.Heart }, { id: 'tags', label: t('menu.tags'), icon: icons.Tag });
-      if (images.length === 2 && !folders.length) items.push({ id: 'compare', label: t('selection.compare'), icon: icons.Columns2 });
+      if (taggable.length) items.push({ id: 'favorite', label: t('menu.favorite'), icon: icons.Heart }, { id: 'tags', label: t('menu.tags'), icon: icons.Tag });
+      if (taggable.length === 2 && entries.length === 2) items.push({ id: 'compare', label: t('selection.compare'), icon: icons.Columns2 });
     }
     if (entries.length > 1 || folders.length) items.push({ id: 'zip', label: t('selection.zip'), icon: icons.Download, divider: true });
     if (single && local) {
@@ -168,11 +170,13 @@ export function useImageActions() {
           break;
         case 'favorite':
         case 'unfavorite':
-          await setFavorite(images, id === 'favorite');
+          await setFavorite(images.filter((i) => i.kind === 'image'), id === 'favorite');
           break;
-        case 'tags':
-          dialogs.openTags(images);
+        case 'tags': {
+          const taggable = images.filter((i) => i.kind === 'image');
+          if (taggable.length) dialogs.openTags(taggable);
           break;
+        }
         case 'copyPrompt': {
           const d = await detail(item);
           await copyText(d.prompt ?? '');
@@ -202,7 +206,7 @@ export function useImageActions() {
           await downloadZip(refs, entries.length === 1 && first.kind === 'folder' ? first.folder.name : 'hanaikada');
           break;
         case 'compare':
-          if (images.length === 2) dialogs.openCompare([images[0], images[1]]);
+          if (images.length === 2 && images.every((i) => i.kind === 'image')) dialogs.openCompare([images[0], images[1]]);
           break;
         case 'showInFolder':
         case 'openWithApp':

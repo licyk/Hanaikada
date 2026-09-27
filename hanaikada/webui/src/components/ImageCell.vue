@@ -1,23 +1,30 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { thumbUrl } from '@/api/client';
+import { fileUrl, thumbUrl } from '@/api/client';
 import type { ImageItem } from '@/api/types';
 import { thumbSizeFor } from '@/components/gridKeyboard';
 import PlatformBadge from '@/components/PlatformBadge.vue';
+import VideoThumb from '@/components/VideoThumb.vue';
+import { formatDuration } from '@/format';
 import { useI18n } from '@/i18n';
+import { usePreferencesStore } from '@/stores/preferences';
 import { AppIcon, icons } from '@/ui';
 
 /**
- * One image in a grid: a lazily loaded thumbnail, its name, the platform that made it, dots for
- * its custom tags, a shimmer while it is not indexed yet, and a blur when a blur tag applies.
+ * One file in a grid: an image's lazily loaded thumbnail (a video's own frames, see VideoThumb; an
+ * icon for anything else), its name, the platform that made it, dots for its custom tags, a
+ * shimmer while it is not indexed yet, and a blur when a blur tag applies.
  */
 const props = defineProps<{ item: ImageItem; size: number; showName: boolean; selected: boolean; focused: boolean; tagColors: Map<number, string | null>; blurred?: boolean; favoriteId?: number | null }>();
 const emit = defineEmits<{ toggleSelect: [MouseEvent] }>();
 const { t } = useI18n();
+const prefs = usePreferencesStore();
 const failed = ref(false);
+const duration = ref<number | null>(null);
 const loaded = ref(false);
 
 const src = computed(() => (props.item.kind === 'image' ? thumbUrl(props.item.rootId, props.item.path, props.item.version, thumbSizeFor(props.size)) : null));
+const video = computed(() => (props.item.kind === 'video' ? fileUrl(props.item.rootId, props.item.path, props.item.version) : null));
 const dots = computed(() => (props.item.image?.tag_ids ?? []).filter((id) => id !== props.favoriteId).slice(0, 5));
 const favorite = computed(() => props.favoriteId != null && (props.item.image?.tag_ids ?? []).includes(props.favoriteId));
 const fileIcon = computed(() => ({ video: icons.Film, audio: icons.Music })[props.item.kind as 'video' | 'audio'] ?? icons.File);
@@ -28,6 +35,7 @@ const ext = computed(() => props.item.name.split('.').pop()?.toUpperCase() ?? ''
   <div class="cell" :class="{ selected, focused, blurred }" :title="item.name">
     <div class="thumb">
       <img v-if="src && !failed" :src="src" alt="" loading="lazy" decoding="async" draggable="false" :class="{ loaded }" @load="loaded = true" @error="failed = true" />
+      <VideoThumb v-else-if="video && !failed" :src="video" :play="prefs.prefs.videoAutoplay" @error="failed = true" @duration="duration = $event" />
       <div v-else class="placeholder">
         <AppIcon :icon="item.kind === 'image' ? icons.ImageOff : fileIcon" :size="24" />
         <span v-if="item.kind !== 'image'" class="type-label-small">{{ ext }}</span>
@@ -36,6 +44,7 @@ const ext = computed(() => props.item.name.split('.').pop()?.toUpperCase() ?? ''
         <AppIcon :icon="selected ? icons.SquareCheck : icons.Square" :size="20" />
       </button>
       <div class="badges">
+        <span v-if="item.kind === 'video'" class="media-badge type-label-small"><AppIcon :icon="icons.Film" :size="18" />{{ duration != null ? formatDuration(duration) : '' }}</span>
         <PlatformBadge :platform="item.image?.platform" />
         <span v-if="item.image?.has_error" class="error-mark" :title="t('common.error')"><AppIcon :icon="icons.AlertTriangle" :size="18" /></span>
       </div>
@@ -75,6 +84,12 @@ img.loaded { opacity: 1; }
 .cell:hover .check, .check.on, .check:focus-visible { opacity: 1; }
 .check.on { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
 .badges { position: absolute; left: var(--app-space-1); bottom: var(--app-space-1); display: flex; gap: var(--app-space-1); }
+.media-badge {
+  display: inline-flex; align-items: center; gap: 2px; height: 20px; padding: 0 var(--app-space-1) 0 2px; border-radius: var(--md-sys-shape-corner-extra-small);
+  background: color-mix(in srgb, var(--md-sys-color-surface) 80%, transparent); color: var(--md-sys-color-on-surface);
+}
+.blurred :deep(.video-thumb) { filter: blur(18px) saturate(0.7); }
+.blurred:hover :deep(.video-thumb) { filter: none; }
 .error-mark { display: grid; place-items: center; width: 20px; height: 20px; border-radius: var(--md-sys-shape-corner-extra-small); background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); }
 .marks { position: absolute; right: var(--app-space-1); bottom: var(--app-space-1); display: flex; align-items: center; gap: 3px; }
 .heart { color: var(--md-sys-color-error); fill: currentColor; filter: drop-shadow(0 0 2px var(--md-sys-color-surface)); }

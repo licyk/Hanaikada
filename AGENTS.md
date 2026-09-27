@@ -285,6 +285,13 @@ generated `schema.d.ts`, socket.io-client, `@material/web` wrapped in `ui/`, Luc
   root (`GridFolder.root_id`), which All folders (`COMBINED_VIEW_ID = '*'`) needs. Actions come
   from one list (`components/imageActions.ts`); dialogs open through `stores/dialogs.ts` and are
   mounted once in `App.vue`. The viewer walks the list it was opened from (`stores/viewer.ts`).
+- **Video, audio, other files:** listed but not indexed (no metadata, favourites or tags). Grid
+  videos are drawn by the browser from the file (`components/VideoThumb.vue`; the file route
+  serves ranges): muted and looping while on screen when `prefs.videoAutoplay` (default on),
+  else a still frame; paused under the viewer and for reduced motion. The viewer restarts a video
+  or audio with sound (muted if the browser refuses), shows other files as a card with a download
+  and a plain-text preview of small text files, and keeps pan/zoom gestures to images.
+  `library.show_all_files` (off) lists every file type, still only inside output folders.
 - **Narrow screens:** drawers (Browse's folders, Search's form) open below the toolbar, whose
   height is measured (`ui/useElementHeight`) because it wraps, so the button that opened a drawer
   can always close it; Browse's drawer also closes on its scrim, Escape, or a picked folder.

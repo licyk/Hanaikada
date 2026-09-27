@@ -50,3 +50,12 @@ export function parentPath(path: string): string {
   parts.pop();
   return parts.join('/');
 }
+
+/** A media length: ``0:07``, ``12:30``, ``1:02:03``. */
+export function formatDuration(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = String(total % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
+}

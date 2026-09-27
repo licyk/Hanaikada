@@ -10,7 +10,8 @@ import { useDialogsStore } from '@/stores/dialogs';
 import { type ShortcutAction, usePreferencesStore } from '@/stores/preferences';
 import { useViewerStore } from '@/stores/viewer';
 import { useWindowClass } from '@/theme/breakpoints';
-import { AppIcon, ContextMenu, IconButton, ProgressCircle, icons, type MenuItem } from '@/ui';
+import { formatBytes } from '@/format';
+import { AppButton, AppIcon, ContextMenu, IconButton, ProgressCircle, icons, type MenuItem } from '@/ui';
 
 /**
  * The full-screen viewer over whichever list opened it. ← → walk that list and fetch its next page
@@ -27,6 +28,45 @@ const compact = computed(() => windowClass.value === 'compact');
 
 const item = computed(() => viewer.current);
 const src = computed(() => (item.value ? fileUrl(item.value.rootId, item.value.path, item.value.version) : ''));
+const isImage = computed(() => item.value?.kind === 'image');
+
+// -- video and audio: opening one starts it from the beginning, with sound ------------------------
+
+const media = ref<HTMLMediaElement | null>(null);
+watch(media, (el) => {
+  if (!el) return;
+  el.currentTime = 0;
+  el.muted = false;
+  // A browser that refuses sound without a click on the page gets it muted rather than stopped.
+  el.play().catch((e: DOMException) => {
+    if (e?.name !== 'NotAllowedError') return;
+    el.muted = true;
+    el.play().catch(() => undefined);
+  });
+});
+
+// -- other files: a plain-text preview of small text files ------------------------------------------
+
+const TEXT_EXTENSIONS = new Set(['txt', 'json', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'csv', 'tsv', 'md', 'log', 'xml', 'py', 'js', 'ts', 'sh', 'bat']);
+const PREVIEW_BYTES = 512 * 1024;
+const preview = ref<string | null>(null);
+watch(
+  () => [item.value?.key, src.value] as const,
+  async () => {
+    preview.value = null;
+    const current = item.value;
+    const ext = current?.name.split('.').pop()?.toLowerCase() ?? '';
+    if (!current || current.kind !== 'file' || !TEXT_EXTENSIONS.has(ext) || current.size > PREVIEW_BYTES) return;
+    const url = src.value;
+    try {
+      const text = await (await fetch(url)).text();
+      if (src.value === url) preview.value = text;
+    } catch {
+      /* the card still offers the download */
+    }
+  },
+  { immediate: true },
+);
 const stage = ref<HTMLElement | null>(null);
 const natural = reactive({ w: 0, h: 0 });
 const view = reactive({ fit: true, scale: 1, x: 0, y: 0 });
@@ -104,12 +144,14 @@ const fit = () => Object.assign(view, { fit: true, x: 0, y: 0 });
 const actual = (px?: number, py?: number) => zoomAt(1, px, py);
 
 function onWheel(event: WheelEvent) {
+  if (!isImage.value) return;
   event.preventDefault();
   const rect = stage.value!.getBoundingClientRect();
   zoomAt(scale.value * Math.pow(1.0015, -event.deltaY), event.clientX - rect.left, event.clientY - rect.top);
 }
 
 function onDoubleClick(event: MouseEvent) {
+  if (!isImage.value) return;
   const rect = stage.value!.getBoundingClientRect();
   if (view.fit || Math.abs(scale.value - fitScale.value) < 0.01) actual(event.clientX - rect.left, event.clientY - rect.top);
   else fit();
@@ -121,7 +163,8 @@ let panStart: { x: number; y: number; vx: number; vy: number } | null = null;
 let swipeStart: { x: number; y: number } | null = null;
 
 function onPointerDown(event: PointerEvent) {
-  if (event.button !== 0) return;
+  // A player's controls and a file card keep their own pointer: no pan, pinch or swipe there.
+  if (event.button !== 0 || (event.target as HTMLElement).closest('video, audio, .file-card')) return;
   (event.target as HTMLElement).setPointerCapture?.(event.pointerId);
   pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
   if (pointers.size === 2) {
@@ -230,6 +273,8 @@ function onKey(event: KeyboardEvent) {
   } else if (matches('slideshow', event)) {
     playing.value = !playing.value;
     handled();
+  } else if (!isImage.value) {
+    return;
   } else if (event.key === '+' || event.key === '=') {
     zoomAt(scale.value * 1.25);
     handled();
@@ -298,12 +343,15 @@ const strip = computed(() => {
             <span class="type-title-medium name">{{ item.name }}</span>
             <span class="type-body-small dim">{{ t('viewer.position', { index: viewer.index + 1, total: viewer.items.length }) }}<template v-if="viewer.loading"> · {{ t('viewer.loadingMore') }}</template></span>
           </div>
-          <span v-if="!compact" class="type-label-medium dim zoom">{{ zoomLabel }}</span>
-          <IconButton v-if="!compact" :icon="icons.ZoomOut" :label="t('viewer.zoomOut')" @click="zoomAt(scale / 1.25)" />
-          <IconButton v-if="!compact" :icon="icons.ZoomIn" :label="t('viewer.zoomIn')" @click="zoomAt(scale * 1.25)" />
-          <IconButton :icon="icons.Maximize2" :label="view.fit ? t('viewer.actual') : t('viewer.fit')" @click="view.fit ? actual() : fit()" />
-          <IconButton :icon="playing ? icons.Pause : icons.Play" :label="t('viewer.slideshow')" @click="playing = !playing" />
-          <IconButton :icon="icons.Heart" :label="t('viewer.favorite')" :class="{ fav: favorite }" @click="run(favorite ? 'unfavorite' : 'favorite')" />
+          <template v-if="isImage">
+            <span v-if="!compact" class="type-label-medium dim zoom">{{ zoomLabel }}</span>
+            <IconButton v-if="!compact" :icon="icons.ZoomOut" :label="t('viewer.zoomOut')" @click="zoomAt(scale / 1.25)" />
+            <IconButton v-if="!compact" :icon="icons.ZoomIn" :label="t('viewer.zoomIn')" @click="zoomAt(scale * 1.25)" />
+            <IconButton :icon="icons.Maximize2" :label="view.fit ? t('viewer.actual') : t('viewer.fit')" @click="view.fit ? actual() : fit()" />
+          </template>
+          <!-- Beside a player a ▶ would read as "play this"; the slideshow key still works there. -->
+          <IconButton v-if="isImage || playing" :icon="playing ? icons.Pause : icons.Play" :label="t('viewer.slideshow')" @click="playing = !playing" />
+          <IconButton v-if="isImage" :icon="icons.Heart" :label="t('viewer.favorite')" :class="{ fav: favorite }" @click="run(favorite ? 'unfavorite' : 'favorite')" />
           <IconButton v-if="!compact" :icon="icons.Download" :label="t('common.download')" @click="run('download')" />
           <IconButton v-if="!compact" :icon="icons.Trash2" :label="t('common.delete')" @click="run('delete')" />
           <IconButton :icon="icons.Info" :label="t('viewer.info')" :tonal="prefs.prefs.infoOpen" @click="prefs.prefs.infoOpen = !prefs.prefs.infoOpen" />
@@ -314,7 +362,7 @@ const strip = computed(() => {
           <div
             ref="stage"
             class="stage"
-            :class="{ zoomed: !view.fit }"
+            :class="{ zoomed: !view.fit, 'not-image': !isImage }"
             @wheel="onWheel"
             @dblclick="onDoubleClick"
             @pointerdown="onPointerDown"
@@ -329,9 +377,18 @@ const strip = computed(() => {
               <ProgressCircle v-if="!loaded && !failed" class="spinner" :size="36" />
               <div v-if="failed" class="failed dim type-body-large"><AppIcon :icon="icons.ImageOff" /> {{ t('viewer.notAnImage') }}</div>
             </template>
-            <video v-else-if="item.kind === 'video'" :src="src" class="media" controls autoplay />
-            <audio v-else-if="item.kind === 'audio'" :src="src" controls autoplay />
-            <div v-else class="failed dim type-body-large"><AppIcon :icon="icons.File" /> {{ t('viewer.notAnImage') }}</div>
+            <video v-else-if="item.kind === 'video'" ref="media" :key="src" :src="src" class="media" controls playsinline />
+            <div v-else class="file-card" :class="{ wide: preview !== null }">
+              <span class="file-icon"><AppIcon :icon="item.kind === 'audio' ? icons.Music : icons.File" /></span>
+              <span class="type-title-medium file-name">{{ item.name }}</span>
+              <span class="type-body-small dim">{{ formatBytes(item.size) }}</span>
+              <audio v-if="item.kind === 'audio'" ref="media" :key="src" :src="src" class="audio" controls />
+              <template v-else>
+                <pre v-if="preview !== null" class="file-preview type-body-small">{{ preview }}</pre>
+                <p v-else class="type-body-medium dim">{{ t('viewer.notAnImage') }}</p>
+                <AppButton :icon="icons.Download" @click="run('download')">{{ t('common.download') }}</AppButton>
+              </template>
+            </div>
 
             <button v-if="viewer.index > 0" type="button" class="nav prev" :aria-label="t('viewer.previous')" @click.stop="viewer.previous()" @pointerdown.stop>
               <AppIcon :icon="icons.ChevronLeft" />
@@ -352,7 +409,8 @@ const strip = computed(() => {
         <nav v-if="!compact" class="strip" :aria-label="t('viewer.filmstrip')">
           <button v-for="s in strip" :key="s.item.key" type="button" class="frame" :class="{ current: s.current }" :aria-label="s.item.name" @click="viewer.goTo(s.item.key)">
             <img v-if="s.item.kind === 'image'" :src="thumbUrl(s.item.rootId, s.item.path, s.item.version, 128)" alt="" loading="lazy" draggable="false" />
-            <AppIcon v-else :icon="icons.File" :size="20" />
+            <video v-else-if="s.item.kind === 'video'" :src="`${fileUrl(s.item.rootId, s.item.path, s.item.version)}#t=0.1`" muted preload="metadata" tabindex="-1" />
+            <AppIcon v-else :icon="s.item.kind === 'audio' ? icons.Music : icons.File" :size="20" />
           </button>
         </nav>
         <ContextMenu v-model:open="menu.open" :items="menuItems" :x="menu.x" :y="menu.y" @select="run($event as ActionId)" />
@@ -383,6 +441,24 @@ const strip = computed(() => {
 .placeholder { position: absolute; inset: 0; margin: auto; max-width: 100%; max-height: 100%; object-fit: contain; filter: blur(2px); }
 .spinner { position: absolute; left: 50%; top: 50%; translate: -50% -50%; }
 .media { position: absolute; inset: 0; margin: auto; max-width: 100%; max-height: 100%; }
+.stage.not-image { cursor: default; touch-action: auto; }
+/* Audio and other files: a card in the middle of the stage. */
+.file-card {
+  position: absolute; inset: 0; margin: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--app-space-2);
+  width: min(var(--app-width-dialog-small), calc(100% - 32px)); height: fit-content; max-height: calc(100% - 32px); padding: var(--app-space-6);
+  border-radius: var(--md-sys-shape-corner-extra-large); background: var(--md-sys-color-surface-container); color: var(--md-sys-color-on-surface); user-select: text;
+}
+.file-card.wide { width: min(var(--app-width-dialog-medium), calc(100% - 32px)); }
+.file-icon {
+  display: grid; place-items: center; width: 72px; height: 72px; border-radius: var(--md-sys-shape-corner-large);
+  background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container);
+}
+.file-name { max-width: 100%; min-width: 0; overflow-wrap: anywhere; text-align: center; }
+.audio { width: 100%; margin-top: var(--app-space-2); }
+.file-preview {
+  align-self: stretch; min-height: 0; max-height: 50vh; margin: var(--app-space-2) 0; padding: var(--app-space-3); overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+  border-radius: var(--md-sys-shape-corner-medium); background: var(--md-sys-color-surface-container-high); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
 .failed { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: var(--app-space-2); }
 .nav {
   position: absolute; top: 50%; translate: 0 -50%; display: grid; place-items: center; width: 48px; height: 96px; border: 0; cursor: pointer;
@@ -404,7 +480,7 @@ const strip = computed(() => {
 .strip { display: flex; gap: var(--app-space-1); justify-content: center; height: 72px; padding: var(--app-space-2); overflow: hidden; }
 .frame { flex: none; width: 56px; height: 56px; padding: 0; border: 2px solid transparent; border-radius: var(--md-sys-shape-corner-small); overflow: hidden; background: var(--md-sys-color-surface-container-highest); cursor: pointer; opacity: 0.6; display: grid; place-items: center; color: var(--md-sys-color-on-surface-variant); }
 .frame.current { border-color: var(--md-sys-color-primary); opacity: 1; }
-.frame img { width: 100%; height: 100%; object-fit: cover; }
+.frame img, .frame video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .compact .main { flex-direction: column; }
 .compact .info { max-width: none; min-width: 0; height: 55%; border-radius: var(--md-sys-shape-corner-extra-large) var(--md-sys-shape-corner-extra-large) 0 0; padding-bottom: env(safe-area-inset-bottom); }
 .compact .nav { opacity: 1; width: 40px; height: 64px; }

@@ -80,7 +80,12 @@ def test_listing_marks_gone_files_missing(services, scanned, webui_dir):
 
 def test_show_all_files(services, scanned, webui_dir):
     (webui_dir / DAY / "notes.md").write_text("x")
-    assert "notes.md" not in [f.name for f in services.library.list_entries(scanned, DAY).files]
+    # Video and audio are always listed; any other file only with show_all_files.
+    (webui_dir / DAY / "clip.mp4").write_bytes(b"\0" * 16)
+    (webui_dir / DAY / "voice.aac").write_bytes(b"\0" * 16)
+    kinds = {f.name: f.kind for f in services.library.list_entries(scanned, DAY).files}
+    assert (kinds["clip.mp4"], kinds["voice.aac"]) == ("video", "audio")
+    assert "notes.md" not in kinds
     services.settings.update({"library": {"show_all_files": True}})
     entry = next(f for f in services.library.list_entries(scanned, DAY).files if f.name == "notes.md")
     assert entry.kind == "file" and entry.image is None

@@ -9,7 +9,8 @@ import { IconButton, Switch, icons } from '@/ui';
 const props = defineProps<{ selection: Selection; entries: GridEntry[]; allKeys: string[] }>();
 const emit = defineEmits<{ action: [string] }>();
 const { t } = useI18n();
-const images = computed(() => props.entries.filter((e) => e.kind === 'image').length);
+// Favourites, tags and compare are for image files (videos, audio and other files are not indexed).
+const images = computed(() => props.entries.filter((e) => e.kind === 'image' && e.item.kind === 'image').length);
 const keep = computed({ get: () => props.selection.keep.value, set: (v: boolean) => (props.selection.keep.value = v) });
 </script>
 

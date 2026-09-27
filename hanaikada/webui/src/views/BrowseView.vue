@@ -141,6 +141,8 @@ const hasMore = computed(() => !isCombined.value && (flat.value ? !!search.hasNe
 const loadingMore = computed(() => !isCombined.value && (flat.value ? search.isFetchingNextPage.value : entries.isFetchingNextPage.value));
 const loading = computed(() => (isCombined.value ? combined.isLoading.value : flat.value ? search.isLoading.value : entries.isLoading.value));
 const error = computed(() => (isCombined.value ? combined.error.value : flat.value ? search.error.value : entries.error.value) as Error | null);
+// "12 images" unless the folder also holds videos, audio or other files: then "12 items".
+const onlyImages = computed(() => items.value.every((i) => i.kind === 'image'));
 const loadMore = () => (isCombined.value ? Promise.resolve() : flat.value ? search.fetchNextPage() : entries.fetchNextPage());
 const refresh = () => (isCombined.value ? combined.refetch() : flat.value ? search.refetch() : entries.refetch());
 const missingRoots = computed(() => (combined.data.value?.missing_roots ?? []).map((id) => roots.data.value?.find((r) => r.id === id)?.name ?? id));
@@ -267,7 +269,8 @@ function pickFiles() {
   const input = document.createElement('input');
   input.type = 'file';
   input.multiple = true;
-  input.accept = 'image/*,video/*';
+  // Every file type when the library shows them all; media otherwise, as the server accepts.
+  if (!settings.data.value?.library.show_all_files) input.accept = 'image/*,video/*,audio/*';
   input.onchange = () => upload(Array.from(input.files ?? []).map((file) => ({ file, relativePath: file.name })));
   input.click();
 }
@@ -319,7 +322,7 @@ onBeforeUnmount(() => stopUploads());
           <IconButton v-if="!wide" :icon="treeOpen ? icons.FolderOpen : icons.Folder" :label="t('browse.tree')" :tonal="treeOpen" @click="treeOpen = !treeOpen" />
           <IconButton :icon="icons.ArrowUp" :label="t('browse.up')" :disabled="!canGoUp" @click="goUp" />
           <Breadcrumbs class="crumbs" :crumbs="crumbs" @navigate="navigate" />
-          <span v-if="total !== null" class="type-label-medium muted count">{{ items.length < (total ?? 0) ? t('browse.shownOf', { shown: items.length, total: total ?? 0 }) : t('common.images', { n: total ?? 0 }) }}</span>
+          <span v-if="total !== null" class="type-label-medium muted count">{{ items.length < (total ?? 0) ? t('browse.shownOf', { shown: items.length, total: total ?? 0 }) : t(onlyImages ? 'common.images' : 'common.items', { n: total ?? 0 }) }}</span>
           <IconButton v-if="!isCombined" :icon="icons.Layers" :label="flat ? t('browse.flattenOff') : t('browse.flatten')" :tonal="flat" @click="flat = !flat" />
           <AppMenu v-if="!isCombined" :items="sortItems" @select="onSort">
             <template #default="{ toggle }"><IconButton :icon="prefs.prefs.desc ? icons.ArrowDownWideNarrow : icons.ArrowUpNarrowWide" :label="t('sort.label')" @click="toggle" /></template>

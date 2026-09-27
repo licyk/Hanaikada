@@ -168,7 +168,7 @@ async function clearCache() {
       <Surface :level="0" shape="large" class="section">
         <h2 class="type-title-large">{{ t('settings.sections.library') }} &amp; {{ t('settings.sections.content') }}</h2>
         <Switch :model-value="s.library.delete_to_trash" :label="t('settings.deleteToTrash')" :supporting-text="t('settings.deleteToTrashHelp', { where: meta.data.value?.trash_location ?? '' })" @update:model-value="save({ library: { delete_to_trash: $event } })" />
-        <Switch :model-value="s.library.show_all_files" :label="t('settings.showAllFiles')" @update:model-value="save({ library: { show_all_files: $event } })" />
+        <Switch :model-value="s.library.show_all_files" :label="t('settings.showAllFiles')" :supporting-text="t('settings.showAllFilesHelp')" @update:model-value="save({ library: { show_all_files: $event } })" />
         <Switch :model-value="s.library.combined_view" :label="t('settings.combinedView')" :supporting-text="t('settings.combinedViewHelp')" @update:model-value="save({ library: { combined_view: $event } })" />
         <TextField :model-value="s.library.sidecar_extensions.join(' ')" :label="t('settings.sidecars')" :supporting-text="t('settings.sidecarsHelp')" @change="save({ library: { sidecar_extensions: list($event) } })" />
         <TextField :model-value="s.content.blur_tags.join(', ')" :label="t('settings.blurTags')" :supporting-text="t('settings.blurTagsHelp')" @change="save({ content: { blur_tags: list($event, /,/) } })" />
@@ -193,6 +193,7 @@ async function clearCache() {
         </label>
         <Slider v-model="prefs.prefs.contrast" :label="t('settings.contrast')" :min="0" :max="1" :step="0.5" ticks />
         <Slider v-model="prefs.prefs.cellSize" :label="t('settings.cellSize')" :min="96" :max="512" :step="8" />
+        <Switch v-model="prefs.prefs.videoAutoplay" :label="t('settings.videoAutoplay')" :supporting-text="t('settings.videoAutoplayHelp')" />
         <div class="field-row">
           <span class="type-body-large">{{ t('settings.defaultSort') }}</span>
           <SelectField v-model="prefs.prefs.sort" :options="(['mtime', 'ctime', 'name', 'size', 'random'] as const).map((v) => ({ value: v, label: t(`sort.${v}`) }))" />

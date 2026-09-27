@@ -28,9 +28,11 @@ const dialogs = useDialogsStore();
 const actions = useImageActions();
 const customTags = useCustomTags();
 
-const detail = useImageByPath(() => props.item.rootId, () => props.item.path, () => props.item.version);
+// Only images are indexed and carry metadata; a video, audio or other file shows its file facts.
+const isImage = computed(() => props.item.kind === 'image');
+const detail = useImageByPath(() => (isImage.value ? props.item.rootId : null), () => props.item.path, () => props.item.version);
 const previousDetail = useImageByPath(
-  () => (prefs.prefs.infoTab === 'prompt' ? (props.previous?.rootId ?? null) : null),
+  () => (prefs.prefs.infoTab === 'prompt' && props.previous?.kind === 'image' ? props.previous.rootId : null),
   () => props.previous?.path ?? null,
   () => props.previous?.version ?? null,
 );
@@ -134,7 +136,20 @@ const setOpen = (key: string, value: boolean) => (opened.value = new Map(opened.
 </script>
 
 <template>
-  <section class="info-panel">
+  <section v-if="!isImage" class="info-panel">
+    <div class="body">
+      <DataList
+        :rows="[
+          { label: t('info.file'), value: item.name },
+          { label: t('info.path'), value: `${item.rootId}:${item.path}` },
+          { label: t('info.format'), value: [item.name.split('.').pop()?.toUpperCase(), t(`info.kinds.${item.kind}`)].filter(Boolean).join(' · ') },
+          { label: t('info.fileSize'), value: formatBytes(item.size) },
+          { label: t('info.modified'), value: formatDate(item.mtime, locale) },
+        ]"
+      />
+    </div>
+  </section>
+  <section v-else class="info-panel">
     <Tabs v-model="prefs.prefs.infoTab" :tabs="tabs" />
     <div class="body">
       <div v-if="detail.isLoading.value" class="loading"><ProgressCircle :size="32" /><span class="muted type-body-medium">{{ t('info.notIndexed') }}</span></div>

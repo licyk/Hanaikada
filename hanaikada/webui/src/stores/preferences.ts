@@ -31,6 +31,8 @@ export interface Preferences {
   lastRoot: string | null;
   cellSize: number;
   showNames: boolean;
+  /** Videos play, muted and looping, in their grid cells; off, a still frame is shown. */
+  videoAutoplay: boolean;
   sort: ListSort;
   desc: boolean;
   infoOpen: boolean;
@@ -51,6 +53,7 @@ export const DEFAULTS: Preferences = {
   lastRoot: null,
   cellSize: 200,
   showNames: true,
+  videoAutoplay: true,
   sort: 'mtime',
   desc: true,
   infoOpen: true,
