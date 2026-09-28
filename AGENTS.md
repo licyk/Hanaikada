@@ -310,7 +310,8 @@ generated `schema.d.ts`, socket.io-client, `@material/web` wrapped in `ui/`, Luc
   can always close it; Browse's drawer also closes on its scrim, Escape, or a picked folder.
 - **Theme:** every colour role comes from one source colour (`#a45a73`, `SchemeTonalSpot`,
   contrast 0/0.5/1); `tokens.css` colours are only a first-paint fallback. Tokens are Google's
-  `--md-sys-*` plus our `--app-*` (e.g. `--app-width-*` `clamp()` widths); views use no literal
+  `--md-sys-*` plus our `--app-*` (e.g. `--app-width-*` `clamp()` widths; `--app-color-on-scrim`,
+  light in both themes, for the viewer's and compare view's dark backdrop); views use no literal
   colours, radii or durations.
 - **Components:** targets ≥ 48 px; views never restyle a `ui/` component (add a variant there);
   `@material/web` is in maintenance mode, so a broken one is replaced inside `ui/`. `ui/Tabs.vue`
@@ -318,7 +319,9 @@ generated `schema.d.ts`, socket.io-client, `@material/web` wrapped in `ui/`, Luc
 - **Layout and motion:** window classes 600/840/1200/1600 (`theme/breakpoints.ts`); a bottom bar
   when compact, a rail otherwise. Motion only through `ui/motion/` (`TRANSITIONS`): fade-through
   between pages, shared-axis-x for tab content (`--axis-dir` on a positioned, x-clipped parent),
-  drawer, sheet, scrim and others; reduced motion becomes a short fade.
+  drawer, `pane` (a side pane pushing the content, by negative margin), sheet, scrim and others;
+  the viewer's page slides with `swipe-out`/`swipe-in` (a swipe drags it first; the arrows, keys
+  and slideshow too, a press mid-slide landing it and stepping on). Reduced motion becomes a short fade.
 - **Language:** `en`, `zh-CN`, or `auto` (default: `zh*` → Chinese, else English).
 
 ## 10. Testing

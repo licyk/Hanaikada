@@ -51,5 +51,9 @@ function onInput(event: Event) {
 </template>
 
 <style scoped>
-.text-field { width: 100%; }
+.text-field {
+  width: 100%;
+  /* An example, not a value: the outline tone keeps it well apart from typed text (on-surface). */
+  --md-outlined-text-field-input-text-placeholder-color: var(--md-sys-color-outline);
+}
 </style>

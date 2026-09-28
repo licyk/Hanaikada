@@ -77,8 +77,14 @@ onBeforeUnmount(() => {
 <style scoped>
 .compare {
   position: fixed; inset: 0; z-index: 46; display: flex; flex-direction: column;
-  background: color-mix(in srgb, var(--md-sys-color-scrim) 94%, var(--md-sys-color-surface)); color: var(--md-sys-color-inverse-on-surface);
-  --md-icon-button-icon-color: var(--md-sys-color-inverse-on-surface);
+  background: color-mix(in srgb, var(--md-sys-color-scrim) 94%, var(--md-sys-color-surface)); color: var(--app-color-on-scrim);
+  --md-icon-button-icon-color: var(--app-color-on-scrim);
+  --md-icon-button-hover-icon-color: var(--app-color-on-scrim);
+  --md-icon-button-focus-icon-color: var(--app-color-on-scrim);
+  --md-icon-button-pressed-icon-color: var(--app-color-on-scrim);
+  --md-icon-button-hover-state-layer-color: var(--app-color-on-scrim);
+  --md-icon-button-pressed-state-layer-color: var(--app-color-on-scrim);
+  --md-icon-button-disabled-icon-color: var(--app-color-on-scrim);
 }
 .bar { display: flex; align-items: center; gap: var(--app-space-2); min-height: 56px; padding: 0 var(--app-space-2); }
 .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

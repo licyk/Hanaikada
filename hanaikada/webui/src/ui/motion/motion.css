@@ -56,10 +56,31 @@
 .drawer-enter-from,
 .drawer-leave-to { transform: translateX(-100%); }
 
+/* pane: a side pane beside the content (Search's form on a wide screen) slides out from the start
+   edge and pushes the content aside. A negative margin keeps its contents at full width meanwhile;
+   the parent clips it. --pane-width is the pane's width. */
+.pane-enter-active {
+  transition:
+    margin-inline-start var(--md-sys-motion-duration-medium3) var(--md-sys-motion-easing-emphasized-decelerate),
+    opacity var(--md-sys-motion-duration-medium3) var(--md-sys-motion-easing-emphasized-decelerate);
+}
+.pane-leave-active {
+  transition:
+    margin-inline-start var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized-accelerate),
+    opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized-accelerate);
+}
+.pane-enter-from,
+.pane-leave-to { margin-inline-start: calc(-1 * var(--pane-width, var(--app-width-pane))); opacity: 0; }
+
 .scrim-enter-active,
 .scrim-leave-active { transition: opacity var(--md-sys-motion-duration-medium3) var(--md-sys-motion-easing-standard); }
 .scrim-enter-from,
 .scrim-leave-to { opacity: 0; }
+
+/* swipe: the viewer's page follows a finger (no transition while dragging), then leaves with
+   swipe-out, and its neighbour arrives with swipe-in; swipe-in also snaps a short drag back. */
+.swipe-out { transition: transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized-accelerate); }
+.swipe-in { transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate); }
 
 /* list: cards added, removed or reordered (TransitionGroup). Stagger comes from --stagger. */
 .list-move { transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized); }

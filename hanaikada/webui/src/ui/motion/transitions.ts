@@ -6,6 +6,7 @@ export const TRANSITIONS = {
   container: 'container',
   sheet: 'sheet',
   drawer: 'drawer',
+  pane: 'pane',
   scrim: 'scrim',
   list: 'list',
   collapse: 'collapse',

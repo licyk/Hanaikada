@@ -76,12 +76,17 @@
   --app-space-1: 4px; --app-space-2: 8px; --app-space-3: 12px; --app-space-4: 16px;
   --app-space-5: 20px; --app-space-6: 24px; --app-space-8: 32px;
 
+  /* Content over the near-black scrim of the viewer and the compare view: light in both themes
+     (inverse-on-surface is light only in the light theme). */
+  --app-color-on-scrim: var(--md-sys-color-inverse-on-surface);
+
   /* First-paint fallback colours */
   --md-sys-color-surface: #f9f9ff;
   --md-sys-color-on-surface: #1a1c20;
 }
 
 :root[data-theme='dark'] {
+  --app-color-on-scrim: var(--md-sys-color-on-surface);
   --md-sys-color-surface: #111318;
   --md-sys-color-on-surface: #e2e2e9;
 }

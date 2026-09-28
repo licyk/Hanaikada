@@ -11,7 +11,7 @@ import { type ShortcutAction, usePreferencesStore } from '@/stores/preferences';
 import { useViewerStore } from '@/stores/viewer';
 import { useWindowClass } from '@/theme/breakpoints';
 import { formatBytes } from '@/format';
-import { AppButton, AppIcon, AppMenu, ContextMenu, IconButton, ProgressCircle, icons, type MenuItem } from '@/ui';
+import { AppButton, AppIcon, AppMenu, ContextMenu, IconButton, ProgressCircle, icons, prefersReducedMotion, type MenuItem } from '@/ui';
 
 /**
  * The full-screen viewer over whichever list opened it. ← → walk that list and fetch its next page
@@ -172,9 +172,12 @@ function onPointerDown(event: PointerEvent) {
     const rect = stage.value!.getBoundingClientRect();
     pinchStart = { distance: Math.hypot(a.x - b.x, a.y - b.y), scale: scale.value, cx: (a.x + b.x) / 2 - rect.left, cy: (a.y + b.y) / 2 - rect.top };
     panStart = null;
+    // A second finger means a pinch, not a swipe.
+    swipeStart = null;
+    if (swipe.dx && !swipe.busy) void slideTo('swipe-in', 0);
   } else {
     panStart = { x: event.clientX, y: event.clientY, vx: view.x, vy: view.y };
-    swipeStart = view.fit ? { x: event.clientX, y: event.clientY } : null;
+    swipeStart = view.fit && !swipe.busy ? { x: event.clientX, y: event.clientY } : null;
   }
 }
 
@@ -187,6 +190,13 @@ function onPointerMove(event: PointerEvent) {
   } else if (panStart && !view.fit) {
     view.x = panStart.vx + event.clientX - panStart.x;
     view.y = panStart.vy + event.clientY - panStart.y;
+  } else if (swipeStart && pointers.size === 1 && !swipe.busy) {
+    // Only a sideways drag moves the page; past either end of the list it gives way reluctantly.
+    const dx = event.clientX - swipeStart.x;
+    if (Math.abs(dx) > Math.abs(event.clientY - swipeStart.y)) {
+      swipe.motion = '';
+      swipe.dx = canGo(dx < 0 ? 1 : -1) ? dx : dx / 4;
+    }
   }
 }
 
@@ -195,10 +205,98 @@ function onPointerUp(event: PointerEvent) {
   if (pointers.size < 2) pinchStart = null;
   if (swipeStart && pointers.size === 0) {
     const dx = event.clientX - swipeStart.x;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(event.clientY - swipeStart.y)) (dx < 0 ? viewer.next : viewer.previous)();
+    const dir = dx < 0 ? 1 : -1;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(event.clientY - swipeStart.y) && canGo(dir)) void swipeTo(dir);
+    else if (swipe.dx) void slideTo('swipe-in', 0);
   }
   swipeStart = null;
   panStart = null;
+}
+
+function onPointerCancel(event: PointerEvent) {
+  swipeStart = null;
+  if (swipe.dx && !swipe.busy) void slideTo('swipe-in', 0);
+  onPointerUp(event);
+}
+
+// -- sliding: a swipe drags the page, then it slides out and its neighbour slides in from the other --
+// -- side; the arrows and the keys play the same slide ------------------------------------------------
+
+const slide = ref<HTMLElement | null>(null);
+const swipe = reactive({ dx: 0, motion: '' as '' | 'swipe-out' | 'swipe-in', busy: false });
+const slideStyle = computed(() => (swipe.dx ? { transform: `translateX(${swipe.dx}px)` } : undefined));
+/** 1 is the next item, -1 the previous one. */
+const canGo = (dir: 1 | -1) => (dir > 0 ? viewer.index < viewer.items.length - 1 || !!viewer.source?.hasMore?.() : viewer.index > 0);
+const go = (dir: 1 | -1) => (dir > 0 ? viewer.next() : viewer.previous());
+
+// A newer slide or an interruption bumps ``generation``; an older slide then stops where it is.
+let generation = 0;
+// Ends the transition in flight at once, and the step the running slide has not taken yet.
+let settle: (() => void) | null = null;
+let pendingDir: 1 | -1 | null = null;
+
+/** Move the page to ``dx`` with one of the swipe transitions; resolves when it gets there. */
+function slideTo(motion: 'swipe-out' | 'swipe-in', dx: number): Promise<void> {
+  settle?.();
+  const el = slide.value;
+  if (!el || swipe.dx === dx || prefersReducedMotion()) {
+    Object.assign(swipe, { motion: '', dx });
+    return Promise.resolve();
+  }
+  Object.assign(swipe, { motion, dx });
+  return new Promise((resolve) => {
+    const done = (event?: TransitionEvent) => {
+      // The image's own fade ends here too, bubbling up.
+      if (event && (event.target !== el || event.propertyName !== 'transform')) return;
+      el.removeEventListener('transitionend', done);
+      clearTimeout(timer);
+      if (settle === finish) settle = null;
+      resolve();
+    };
+    const finish = () => done();
+    settle = finish;
+    el.addEventListener('transitionend', done);
+    const timer = setTimeout(done, 1000);
+  });
+}
+
+async function swipeTo(dir: 1 | -1) {
+  const run = ++generation;
+  swipe.busy = true;
+  pendingDir = dir;
+  try {
+    const width = stageSize.w || window.innerWidth;
+    await slideTo('swipe-out', -dir * width);
+    if (run !== generation) return;
+    pendingDir = null;
+    await go(dir);
+    if (run !== generation) return;
+    // The neighbour starts beyond the opposite edge, laid out there before it moves in.
+    Object.assign(swipe, { motion: '', dx: prefersReducedMotion() ? 0 : dir * width });
+    await nextTick();
+    void slide.value?.offsetWidth;
+    if (run !== generation) return;
+    await slideTo('swipe-in', 0);
+  } finally {
+    if (run === generation) Object.assign(swipe, { busy: false, motion: '', dx: 0 });
+  }
+}
+
+/**
+ * The arrows, the keys and the slideshow. From rest the page slides; a press during a slide (quick presses, a held
+ * key) lands the slide at once and steps straight on, so every press still moves by one.
+ */
+function step(dir: 1 | -1) {
+  if (!swipe.busy) {
+    if (canGo(dir)) void swipeTo(dir);
+    return;
+  }
+  generation++;
+  settle?.();
+  Object.assign(swipe, { busy: false, motion: '', dx: 0 });
+  if (pendingDir) void go(pendingDir);
+  pendingDir = null;
+  void go(dir);
 }
 
 // -- actions ------------------------------------------------------------------------------------------
@@ -232,7 +330,7 @@ const playing = ref(false);
 let timer: ReturnType<typeof setInterval> | undefined;
 watch(playing, (on) => {
   clearInterval(timer);
-  if (on) timer = setInterval(() => viewer.next(), Math.max(1, prefs.prefs.slideshowSeconds) * 1000);
+  if (on) timer = setInterval(() => step(1), Math.max(1, prefs.prefs.slideshowSeconds) * 1000);
 });
 
 // -- keyboard -----------------------------------------------------------------------------------------
@@ -252,10 +350,10 @@ function onKey(event: KeyboardEvent) {
     playing.value ? (playing.value = false) : viewer.close();
     handled();
   } else if (matches('next', event) || event.key === 'ArrowDown' || event.key === 'PageDown') {
-    viewer.next();
+    step(1);
     handled();
   } else if (matches('previous', event) || event.key === 'ArrowUp' || event.key === 'PageUp') {
-    viewer.previous();
+    step(-1);
     handled();
   } else if (matches('toggleInfo', event)) {
     prefs.prefs.infoOpen = !prefs.prefs.infoOpen;
@@ -305,6 +403,10 @@ watch(
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = '';
       playing.value = false;
+      generation++;
+      settle?.();
+      pendingDir = null;
+      Object.assign(swipe, { busy: false, motion: '', dx: 0 });
     }
   },
 );
@@ -373,32 +475,34 @@ const strip = computed(() => {
             @pointerdown="onPointerDown"
             @pointermove="onPointerMove"
             @pointerup="onPointerUp"
-            @pointercancel="onPointerUp"
+            @pointercancel="onPointerCancel"
             @contextmenu.prevent="Object.assign(menu, { open: true, x: $event.clientX, y: $event.clientY })"
           >
-            <template v-if="item.kind === 'image'">
-              <img v-if="!failed" :key="src" :src="src" class="image" :class="{ loaded }" :style="imageStyle" alt="" draggable="false" @load="onLoad" @error="failed = true" />
-              <img v-if="!loaded && !failed" :src="thumbUrl(item.rootId, item.path, item.version, 512)" class="placeholder" alt="" draggable="false" />
-              <ProgressCircle v-if="!loaded && !failed" class="spinner" :size="36" />
-              <div v-if="failed" class="failed dim type-body-large"><AppIcon :icon="icons.ImageOff" /> {{ t('viewer.notAnImage') }}</div>
-            </template>
-            <video v-else-if="item.kind === 'video'" ref="media" :key="src" :src="src" class="media" controls playsinline />
-            <div v-else class="file-card" :class="{ wide: preview !== null }">
-              <span class="file-icon"><AppIcon :icon="item.kind === 'audio' ? icons.Music : icons.File" /></span>
-              <span class="type-title-medium file-name">{{ item.name }}</span>
-              <span class="type-body-small dim">{{ formatBytes(item.size) }}</span>
-              <audio v-if="item.kind === 'audio'" ref="media" :key="src" :src="src" class="audio" controls />
-              <template v-else>
-                <pre v-if="preview !== null" class="file-preview type-body-small">{{ preview }}</pre>
-                <p v-else class="type-body-medium dim">{{ t('viewer.notAnImage') }}</p>
-                <AppButton :icon="icons.Download" @click="run('download')">{{ t('common.download') }}</AppButton>
+            <div ref="slide" class="slide" :class="swipe.motion" :style="slideStyle">
+              <template v-if="item.kind === 'image'">
+                <img v-if="!failed" :key="src" :src="src" class="image" :class="{ loaded }" :style="imageStyle" alt="" draggable="false" @load="onLoad" @error="failed = true" />
+                <img v-if="!loaded && !failed" :src="thumbUrl(item.rootId, item.path, item.version, 512)" class="placeholder" alt="" draggable="false" />
+                <ProgressCircle v-if="!loaded && !failed" class="spinner" :size="36" />
+                <div v-if="failed" class="failed dim type-body-large"><AppIcon :icon="icons.ImageOff" /> {{ t('viewer.notAnImage') }}</div>
               </template>
+              <video v-else-if="item.kind === 'video'" ref="media" :key="src" :src="src" class="media" controls playsinline />
+              <div v-else class="file-card" :class="{ wide: preview !== null }">
+                <span class="file-icon"><AppIcon :icon="item.kind === 'audio' ? icons.Music : icons.File" /></span>
+                <span class="type-title-medium file-name">{{ item.name }}</span>
+                <span class="type-body-small dim">{{ formatBytes(item.size) }}</span>
+                <audio v-if="item.kind === 'audio'" ref="media" :key="src" :src="src" class="audio" controls />
+                <template v-else>
+                  <pre v-if="preview !== null" class="file-preview type-body-small">{{ preview }}</pre>
+                  <p v-else class="type-body-medium dim">{{ t('viewer.notAnImage') }}</p>
+                  <AppButton :icon="icons.Download" @click="run('download')">{{ t('common.download') }}</AppButton>
+                </template>
+              </div>
             </div>
 
-            <button v-if="viewer.index > 0" type="button" class="nav prev" :aria-label="t('viewer.previous')" @click.stop="viewer.previous()" @pointerdown.stop>
+            <button v-if="viewer.index > 0" type="button" class="nav prev" :aria-label="t('viewer.previous')" @click.stop="step(-1)" @pointerdown.stop>
               <AppIcon :icon="icons.ChevronLeft" />
             </button>
-            <button v-if="viewer.index < viewer.items.length - 1 || viewer.source?.hasMore?.()" type="button" class="nav next" :aria-label="t('viewer.next')" @click.stop="viewer.next()" @pointerdown.stop>
+            <button v-if="viewer.index < viewer.items.length - 1 || viewer.source?.hasMore?.()" type="button" class="nav next" :aria-label="t('viewer.next')" @click.stop="step(1)" @pointerdown.stop>
               <AppIcon :icon="icons.ChevronRight" />
             </button>
           </div>
@@ -427,19 +531,30 @@ const strip = computed(() => {
 <style scoped>
 .viewer {
   position: fixed; inset: 0; z-index: 45; display: flex; flex-direction: column;
-  background: color-mix(in srgb, var(--md-sys-color-scrim) 94%, var(--md-sys-color-surface)); color: var(--md-sys-color-inverse-on-surface);
-  --md-icon-button-icon-color: var(--md-sys-color-inverse-on-surface);
-  --md-icon-button-hover-icon-color: var(--md-sys-color-inverse-on-surface);
+  background: color-mix(in srgb, var(--md-sys-color-scrim) 94%, var(--md-sys-color-surface)); color: var(--app-color-on-scrim);
+  --md-icon-button-icon-color: var(--app-color-on-scrim);
+  --md-icon-button-hover-icon-color: var(--app-color-on-scrim);
+  --md-icon-button-focus-icon-color: var(--app-color-on-scrim);
+  --md-icon-button-pressed-icon-color: var(--app-color-on-scrim);
+  --md-icon-button-hover-state-layer-color: var(--app-color-on-scrim);
+  --md-icon-button-pressed-state-layer-color: var(--app-color-on-scrim);
+  --md-icon-button-disabled-icon-color: var(--app-color-on-scrim);
 }
 .bar { display: flex; align-items: center; gap: var(--app-space-1); min-height: 56px; padding: 0 var(--app-space-2); }
 .title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dim { opacity: 0.72; }
 .zoom { min-width: 48px; text-align: right; }
-.fav { color: var(--md-sys-color-error); --md-icon-button-icon-color: var(--md-sys-color-error); }
+.fav {
+  color: var(--md-sys-color-error);
+  --md-icon-button-icon-color: var(--md-sys-color-error); --md-icon-button-hover-icon-color: var(--md-sys-color-error);
+  --md-icon-button-focus-icon-color: var(--md-sys-color-error); --md-icon-button-pressed-icon-color: var(--md-sys-color-error);
+}
 .main { flex: 1; min-height: 0; display: flex; }
 .stage { position: relative; flex: 1; min-width: 0; overflow: hidden; touch-action: none; cursor: zoom-in; user-select: none; }
 .stage.zoomed { cursor: grab; }
+/* What a swipe moves: everything on the stage but the arrows. */
+.slide { position: absolute; inset: 0; }
 .stage.zoomed:active { cursor: grabbing; }
 .image { position: absolute; top: 0; left: 0; transform-origin: 0 0; opacity: 0; transition: opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard); }
 .image.loaded { opacity: 1; }
@@ -467,7 +582,7 @@ const strip = computed(() => {
 .failed { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: var(--app-space-2); }
 .nav {
   position: absolute; top: 50%; translate: 0 -50%; display: grid; place-items: center; width: 48px; height: 96px; border: 0; cursor: pointer;
-  background: color-mix(in srgb, var(--md-sys-color-scrim) 40%, transparent); color: var(--md-sys-color-inverse-on-surface);
+  background: color-mix(in srgb, var(--md-sys-color-scrim) 40%, transparent); color: var(--app-color-on-scrim);
   opacity: 0; transition: opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
 }
 .stage:hover .nav, .nav:focus-visible { opacity: 1; }
@@ -479,6 +594,11 @@ const strip = computed(() => {
   /* The panel is a light surface inside the dark viewer: its icons take the surface's colours again. */
   --md-icon-button-icon-color: var(--md-sys-color-on-surface-variant);
   --md-icon-button-hover-icon-color: var(--md-sys-color-on-surface);
+  --md-icon-button-focus-icon-color: var(--md-sys-color-on-surface);
+  --md-icon-button-pressed-icon-color: var(--md-sys-color-on-surface);
+  --md-icon-button-hover-state-layer-color: var(--md-sys-color-on-surface-variant);
+  --md-icon-button-pressed-state-layer-color: var(--md-sys-color-on-surface-variant);
+  --md-icon-button-disabled-icon-color: var(--md-sys-color-on-surface);
 }
 .resize { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 1; }
 .resize:hover { background: color-mix(in srgb, var(--md-sys-color-primary) 30%, transparent); }

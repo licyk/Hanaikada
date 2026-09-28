@@ -170,15 +170,15 @@ const setOpen = (key: string, value: boolean) => (opened.value = new Map(opened.
               <p v-if="info.platform === 'none'" class="muted type-body-medium">{{ t('info.noMetadata') }}</p>
               <div v-if="d.prompt" class="block">
                 <div class="block-head">
-                  <span class="type-label-large">{{ t('info.prompt') }}</span>
-                  <IconButton v-if="selectedText" :icon="icons.Search" :label="t('info.searchThis')" @click="searchSelection(selectedText)" />
+                  <span class="type-label-large block-title">{{ t('info.prompt') }}</span>
                   <IconButton :icon="icons.Copy" :label="t('info.copy')" @click="copy(d.prompt)" />
+                  <IconButton v-if="selectedText" :icon="icons.Search" :label="t('info.searchThis')" @click="searchSelection(selectedText)" />
                 </div>
                 <p class="prompt type-body-medium" @mouseup="captureSelection" @keyup="captureSelection">{{ d.prompt }}</p>
               </div>
               <div v-if="info.negative_prompt" class="block">
                 <div class="block-head">
-                  <span class="type-label-large">{{ t('info.negative') }}</span>
+                  <span class="type-label-large block-title">{{ t('info.negative') }}</span>
                   <IconButton :icon="icons.Copy" :label="t('info.copy')" @click="copy(info.negative_prompt)" />
                 </div>
                 <p class="prompt negative type-body-medium">{{ info.negative_prompt }}</p>
@@ -209,7 +209,7 @@ const setOpen = (key: string, value: boolean) => (opened.value = new Map(opened.
             <div v-else-if="prefs.prefs.infoTab === 'prompt'" class="tab">
               <div class="block">
                 <div class="block-head">
-                  <span class="type-label-large">{{ t('info.prompt') }}</span>
+                  <span class="type-label-large block-title">{{ t('info.prompt') }}</span>
                   <IconButton :icon="icons.Copy" :label="t('info.copy')" @click="copy(d.prompt)" />
                 </div>
                 <p class="prompt type-body-medium">
@@ -281,7 +281,8 @@ const setOpen = (key: string, value: boolean) => (opened.value = new Map(opened.
 .tags, .loras { display: flex; flex-wrap: wrap; gap: var(--app-space-2); }
 .block { display: flex; flex-direction: column; gap: var(--app-space-1); min-width: 0; }
 .block-head { display: flex; align-items: center; gap: var(--app-space-1); min-height: 40px; }
-.block-head > span { flex: 1; min-width: 0; }
+/* The buttons sit right after the title (an IconButton's root is a span too: select the title by class). */
+.block-title { min-width: 0; }
 .prompt {
   margin: 0; padding: var(--app-space-3); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text;
   border-radius: var(--md-sys-shape-corner-medium); background: var(--md-sys-color-surface-container-high);

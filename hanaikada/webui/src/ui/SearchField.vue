@@ -47,7 +47,8 @@ input {
   font: inherit; font-size: var(--md-sys-typescale-body-large-size);
 }
 input::-webkit-search-cancel-button { display: none; }
-input::placeholder { color: var(--md-sys-color-on-surface-variant); }
+/* An example, not a value: lighter than typed text, as in TextField. */
+input::placeholder { color: var(--md-sys-color-outline); opacity: 1; }
 .clear {
   display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 0; border-radius: 50%;
   background: transparent; color: inherit; cursor: pointer;

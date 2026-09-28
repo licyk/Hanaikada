@@ -21,7 +21,7 @@ import { usePreferencesStore } from '@/stores/preferences';
 import { useSelection } from '@/stores/selection';
 import { useViewerStore } from '@/stores/viewer';
 import { useWindowClass } from '@/theme/breakpoints';
-import { AppMenu, Chip, ContextMenu, EmptyState, IconButton, Skeleton, icons, type MenuItem, useElementHeight, useKeepScroll, useSnackbar } from '@/ui';
+import { AppMenu, Chip, ContextMenu, EmptyState, IconButton, Skeleton, TRANSITIONS, icons, type MenuItem, useElementHeight, useKeepScroll, useSnackbar } from '@/ui';
 
 const HISTORY_KEY = 'search-history';
 const { t } = useI18n();
@@ -147,9 +147,12 @@ async function parseDropped(files: DroppedFile[]) {
 
 <template>
   <div class="search-view" :class="{ compact }">
-    <aside v-if="formOpen" ref="formPane" class="form-pane" :style="compact ? { top: `${toolbarHeight}px` } : undefined">
-      <SearchForm :query="query" @change="apply" />
-    </aside>
+    <!-- A drawer over the results on a narrow screen; beside them, a pane that pushes them aside. -->
+    <Transition :name="compact ? TRANSITIONS.drawer : TRANSITIONS.pane">
+      <aside v-if="formOpen" ref="formPane" class="form-pane" :style="compact ? { top: `${toolbarHeight}px` } : undefined">
+        <SearchForm :query="query" @change="apply" />
+      </aside>
+    </Transition>
     <section class="results">
       <div ref="toolbar" class="toolbar">
         <IconButton :icon="icons.ListFilter" :label="t('search.showForm')" :tonal="formOpen" @click="formOpen = !formOpen" />
@@ -197,7 +200,8 @@ async function parseDropped(files: DroppedFile[]) {
 </template>
 
 <style scoped>
-.search-view { position: relative; display: flex; height: 100%; min-height: 0; }
+/* Clipped sideways: the form slides in from beyond the start edge. */
+.search-view { position: relative; display: flex; height: 100%; min-height: 0; overflow-x: clip; }
 .form-pane { width: var(--app-width-pane); flex: none; overflow-y: auto; padding: var(--app-space-4); border-right: 1px solid var(--md-sys-color-outline-variant); }
 .compact .form-pane { position: absolute; top: 56px; left: 0; right: 0; bottom: 0; z-index: 5; width: auto; background: var(--md-sys-color-surface-container-low); border: 0; }
 .results { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
