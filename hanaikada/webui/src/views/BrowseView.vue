@@ -24,7 +24,7 @@ import { useSelection } from '@/stores/selection';
 import { useUploadsStore } from '@/stores/uploads';
 import { useViewerStore } from '@/stores/viewer';
 import { useWindowClass } from '@/theme/breakpoints';
-import { AppButton, AppMenu, Breadcrumbs, Chip, ContextMenu, EmptyState, IconButton, SelectField, Skeleton, icons, type MenuItem, TRANSITIONS, useElementHeight, useKeepScroll, useSnackbar } from '@/ui';
+import { AppButton, AppMenu, Breadcrumbs, Chip, ContextMenu, EmptyState, IconButton, SelectField, Skeleton, icons, layerOpen, type MenuItem, TRANSITIONS, useElementHeight, useKeepScroll, useSnackbar } from '@/ui';
 
 const { t, platformLabel } = useI18n();
 const route = useRoute();
@@ -232,12 +232,12 @@ useKeepScroll(side);
 
 // Narrower than a desktop, the folder panel is a drawer over the grid. It opens below the toolbar,
 // which stays usable (its button closes the drawer again, however many rows the toolbar wraps
-// onto); a tap on the grid beside it or Escape closes it too.
+// onto); a tap on the grid beside it or Escape closes it too, unless a dialog or menu over it takes the Escape.
 const toolbar = ref<HTMLElement | null>(null);
 const toolbarHeight = useElementHeight(toolbar);
 const drawerOpen = computed(() => !wide.value && treeOpen.value);
 const belowToolbar = computed(() => ({ top: `${toolbarHeight.value}px` }));
-const onDrawerKey = (event: KeyboardEvent) => event.key === 'Escape' && !event.defaultPrevented && (treeOpen.value = false);
+const onDrawerKey = (event: KeyboardEvent) => event.key === 'Escape' && !event.defaultPrevented && !layerOpen() && (treeOpen.value = false);
 watch(drawerOpen, (open) => (open ? document.addEventListener('keydown', onDrawerKey) : document.removeEventListener('keydown', onDrawerKey)));
 onActivated(() => drawerOpen.value && document.addEventListener('keydown', onDrawerKey));
 onDeactivated(() => document.removeEventListener('keydown', onDrawerKey));

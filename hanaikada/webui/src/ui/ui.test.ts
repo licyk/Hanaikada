@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
-import { nextTick } from 'vue';
+import { defineComponent, nextTick, ref } from 'vue';
 import { formatBytes, parentPath, pathSegments } from '@/format';
 import { translate, translateList } from '@/i18n';
 import { windowClass } from '@/theme/breakpoints';
@@ -12,6 +12,7 @@ import ExpansionPanel from '@/ui/ExpansionPanel.vue';
 import SegmentedButton from '@/ui/SegmentedButton.vue';
 import { Blossom } from '@/ui/icons';
 import { containerFrom, staggerStyle } from '@/ui/motion/transitions';
+import { layerOpen, useLayer } from '@/ui/useLayer';
 import { useSnackbar } from '@/ui/useSnackbar';
 
 describe('ui components', () => {
@@ -71,6 +72,43 @@ describe('ui components', () => {
     expect(s.state.queue[0].text).toBe('two');
     expect(s.state.queue[0].timeout).toBe(6000);
     s.dismiss(s.state.queue[0].id);
+  });
+});
+
+describe('layers', () => {
+  const escape = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }));
+  const Layer = defineComponent({
+    setup(_, { expose }) {
+      const open = ref(true);
+      const { isTop } = useLayer(() => open.value, () => (open.value = false));
+      expose({ open, isTop });
+      return () => null;
+    },
+  });
+
+  it('closes only the topmost layer on Escape, the one under it next', () => {
+    // The viewer, then a delete dialog opened from it.
+    const viewer = mount(Layer);
+    const dialog = mount(Layer);
+    const v = viewer.vm as unknown as { open: boolean; isTop: () => boolean };
+    const d = dialog.vm as unknown as { open: boolean; isTop: () => boolean };
+    expect(d.isTop()).toBe(true);
+    expect(v.isTop()).toBe(false);
+    escape();
+    expect([v.open, d.open]).toEqual([true, false]);
+    expect(v.isTop()).toBe(true);
+    escape();
+    expect(v.open).toBe(false);
+    expect(layerOpen()).toBe(false);
+    viewer.unmount();
+    dialog.unmount();
+  });
+
+  it('leaves the stack when unmounted open', () => {
+    const wrapper = mount(Layer);
+    expect(layerOpen()).toBe(true);
+    wrapper.unmount();
+    expect(layerOpen()).toBe(false);
   });
 });
 

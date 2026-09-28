@@ -3,6 +3,7 @@ import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import IconButton from '@/ui/IconButton.vue';
 import { X } from '@/ui/icons';
 import { containerFrom } from '@/ui/motion/transitions';
+import { useLayer } from '@/ui/useLayer';
 
 /**
  * A modal dialog built from the tokens. With ``fromRect`` it grows from that rectangle (the
@@ -14,10 +15,11 @@ const emit = defineEmits<{ closed: [] }>();
 const panel = ref<HTMLElement | null>(null);
 const motionStyle = ref<Record<string, string>>({});
 let previousFocus: HTMLElement | null = null;
+const layer = useLayer(() => open.value, () => (open.value = false));
 
+// Escape comes through the layer; a menu open over the dialog keeps Tab to itself.
 function onKey(event: KeyboardEvent) {
-  if (event.key === 'Escape') open.value = false;
-  if (event.key === 'Tab' && panel.value) {
+  if (event.key === 'Tab' && panel.value && layer.isTop()) {
     const focusable = panel.value.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"]), md-filled-button, md-outlined-button, md-text-button, md-filled-tonal-button, md-icon-button');
     if (!focusable.length) return;
     const first = focusable[0];
@@ -75,10 +77,10 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey));
 </template>
 
 <style scoped>
-.scrim { position: fixed; inset: 0; background: color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent); z-index: 40; }
+.scrim { position: fixed; inset: 0; background: color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent); z-index: var(--app-z-dialog); }
 /* The explicit minmax(0, …) column is what keeps a panel with wide content — a long file name, a
    metadata table — inside the window instead of letting the track grow to its minimum size. */
-.layer { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: var(--app-space-4); z-index: 41; }
+.layer { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: var(--app-space-4); z-index: var(--app-z-dialog); }
 .dialog {
   display: flex; flex-direction: column; max-height: calc(100vh - 32px); width: 100%; min-width: 0; outline: none;
   background: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface);

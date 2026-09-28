@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import AppIcon from '@/ui/AppIcon.vue';
+import { useLayer } from '@/ui/useLayer';
 import type { MenuItem } from '@/ui/AppMenu.vue';
 
 /**
@@ -15,6 +16,8 @@ const emit = defineEmits<{ select: [string] }>();
 const list = ref<HTMLElement | null>(null);
 const position = ref<Record<string, string>>({});
 const MARGIN = 8;
+// Escape closes the menu alone, not the viewer or dialog it opened from.
+const layer = useLayer(() => open.value, () => (open.value = false));
 
 function place() {
   const menu = list.value?.getBoundingClientRect();
@@ -29,12 +32,7 @@ const onDoc = (e: Event) => {
   if (!list.value?.contains(e.target as Node)) open.value = false;
 };
 const onKey = (e: KeyboardEvent) => {
-  if (e.key === 'Escape') {
-    open.value = false;
-    e.stopPropagation();
-    return;
-  }
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+  if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && layer.isTop()) {
     const items = [...(list.value?.querySelectorAll<HTMLButtonElement>('button:not([disabled])') ?? [])];
     const i = items.indexOf(document.activeElement as HTMLButtonElement);
     items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus();
@@ -98,7 +96,7 @@ function choose(id: string) {
 
 <style scoped>
 .menu {
-  position: fixed; z-index: 60; min-width: 220px; max-width: min(var(--app-width-menu), calc(100vw - 16px)); padding: var(--app-space-2) 0; overflow-y: auto;
+  position: fixed; z-index: var(--app-z-menu); min-width: 220px; max-width: min(var(--app-width-menu), calc(100vw - 16px)); padding: var(--app-space-2) 0; overflow-y: auto;
   background: var(--md-sys-color-surface-container); border-radius: var(--md-sys-shape-corner-extra-small); box-shadow: var(--app-elevation-2);
 }
 .item {

@@ -39,7 +39,7 @@ function act() {
 </template>
 
 <style scoped>
-.snackbar-host { position: fixed; left: 50%; bottom: var(--app-space-4); translate: -50% 0; z-index: 50; width: min(var(--app-width-snackbar), calc(100vw - 32px)); pointer-events: none; }
+.snackbar-host { position: fixed; left: 50%; bottom: var(--app-space-4); translate: -50% 0; z-index: var(--app-z-snackbar); width: min(var(--app-width-snackbar), calc(100vw - 32px)); pointer-events: none; }
 .snackbar {
   display: flex; align-items: center; gap: var(--app-space-2); min-height: 48px; padding: var(--app-space-1) var(--app-space-1) var(--app-space-1) var(--app-space-4);
   border-radius: var(--md-sys-shape-corner-extra-small); background: var(--md-sys-color-inverse-surface); color: var(--md-sys-color-inverse-on-surface);

@@ -316,6 +316,10 @@ generated `schema.d.ts`, socket.io-client, `@material/web` wrapped in `ui/`, Luc
 - **Components:** targets ≥ 48 px; views never restyle a `ui/` component (add a variant there);
   `@material/web` is in maintenance mode, so a broken one is replaced inside `ui/`. `ui/Tabs.vue`
   re-sets the active tab after mount (`md-tabs` re-picks it). Charts are plain SVG.
+- **Layers:** stacking comes only from the `--app-z-*` tokens (sheet < viewer < compare < dialog <
+  snackbar < menu: dialogs open from the viewer, so they sit above it). Everything modal registers
+  with `ui/useLayer`: Escape closes only the topmost layer, and a layer's own shortcuts wait while
+  another is on top (`isTop()`); no hand-kept list of which dialogs are open.
 - **Layout and motion:** window classes 600/840/1200/1600 (`theme/breakpoints.ts`); a bottom bar
   when compact, a rail otherwise. Motion only through `ui/motion/` (`TRANSITIONS`): fade-through
   between pages, shared-axis-x for tab content and Browse's folder changes (`--axis-dir` on a

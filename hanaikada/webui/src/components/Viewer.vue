@@ -11,7 +11,7 @@ import { type ShortcutAction, usePreferencesStore } from '@/stores/preferences';
 import { useViewerStore } from '@/stores/viewer';
 import { useWindowClass } from '@/theme/breakpoints';
 import { formatBytes } from '@/format';
-import { AppButton, AppIcon, AppMenu, ContextMenu, IconButton, ProgressCircle, icons, prefersReducedMotion, type MenuItem } from '@/ui';
+import { AppButton, AppIcon, AppMenu, ContextMenu, IconButton, ProgressCircle, icons, prefersReducedMotion, type MenuItem, useLayer } from '@/ui';
 
 /**
  * The full-screen viewer over whichever list opened it. ← → walk that list and fetch its next page
@@ -340,16 +340,19 @@ function matches(action: ShortcutAction, event: KeyboardEvent): boolean {
   return !!key && (event.key === key || event.key.toLowerCase() === key.toLowerCase());
 }
 
+// Escape stops the slideshow, then closes. A dialog or menu opened over the viewer takes the keys.
+const layer = useLayer(
+  () => viewer.open,
+  () => (playing.value ? (playing.value = false) : viewer.close()),
+);
+
 function onKey(event: KeyboardEvent) {
-  if (!viewer.open || dialogs.transfer || dialogs.rename || dialogs.remove || dialogs.tags || menu.open) return;
+  if (!viewer.open || !layer.isTop()) return;
   const target = event.target as HTMLElement | null;
   if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
   if (event.ctrlKey || event.metaKey || event.altKey) return;
   const handled = () => event.preventDefault();
-  if (event.key === 'Escape') {
-    playing.value ? (playing.value = false) : viewer.close();
-    handled();
-  } else if (matches('next', event) || event.key === 'ArrowDown' || event.key === 'PageDown') {
+  if (matches('next', event) || event.key === 'ArrowDown' || event.key === 'PageDown') {
     step(1);
     handled();
   } else if (matches('previous', event) || event.key === 'ArrowUp' || event.key === 'PageUp') {
@@ -530,7 +533,7 @@ const strip = computed(() => {
 
 <style scoped>
 .viewer {
-  position: fixed; inset: 0; z-index: 45; display: flex; flex-direction: column;
+  position: fixed; inset: 0; z-index: var(--app-z-viewer); display: flex; flex-direction: column;
   background: color-mix(in srgb, var(--md-sys-color-scrim) 94%, var(--md-sys-color-surface)); color: var(--app-color-on-scrim);
   --md-icon-button-icon-color: var(--app-color-on-scrim);
   --md-icon-button-hover-icon-color: var(--app-color-on-scrim);

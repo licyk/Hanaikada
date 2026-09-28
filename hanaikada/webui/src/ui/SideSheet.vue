@@ -1,15 +1,12 @@
 <script setup lang="ts">
-import { onBeforeUnmount, watch } from 'vue';
 import IconButton from '@/ui/IconButton.vue';
 import { X } from '@/ui/icons';
+import { useLayer } from '@/ui/useLayer';
 
 /** A modal side sheet that slides in from the right edge (the ``sheet`` transition). */
 withDefaults(defineProps<{ title: string; closeLabel?: string }>(), { closeLabel: 'Close' });
 const open = defineModel<boolean>('open', { default: false });
-
-const onKey = (e: KeyboardEvent) => e.key === 'Escape' && (open.value = false);
-watch(open, (v) => (v ? document.addEventListener('keydown', onKey) : document.removeEventListener('keydown', onKey)));
-onBeforeUnmount(() => document.removeEventListener('keydown', onKey));
+useLayer(() => open.value, () => (open.value = false));
 </script>
 
 <template>
@@ -31,9 +28,9 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey));
 </template>
 
 <style scoped>
-.scrim { position: fixed; inset: 0; background: color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent); z-index: 30; }
+.scrim { position: fixed; inset: 0; background: color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent); z-index: var(--app-z-sheet); }
 .sheet {
-  position: fixed; top: 0; right: 0; bottom: 0; width: min(var(--app-width-sheet), 100vw); z-index: 31; display: flex; flex-direction: column;
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(var(--app-width-sheet), 100vw); z-index: var(--app-z-sheet); display: flex; flex-direction: column;
   background: var(--md-sys-color-surface-container-low); color: var(--md-sys-color-on-surface);
   border-radius: var(--md-sys-shape-corner-large) 0 0 var(--md-sys-shape-corner-large); box-shadow: var(--app-elevation-2);
 }

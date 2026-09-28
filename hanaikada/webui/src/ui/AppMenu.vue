@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue';
 import AppIcon from '@/ui/AppIcon.vue';
+import { useLayer } from '@/ui/useLayer';
 
 export interface MenuItem {
   id: string;
@@ -23,6 +24,8 @@ const open = ref(false);
 const root = ref<HTMLElement | null>(null);
 const list = ref<HTMLElement | null>(null);
 const position = ref<Record<string, string>>({});
+// Escape closes the menu alone, not the viewer or dialog it opened from.
+const layer = useLayer(() => open.value, () => (open.value = false));
 
 const MIN_WIDTH = 200;
 const MARGIN = 8;
@@ -52,11 +55,7 @@ const onDoc = (e: Event) => {
   if (!root.value?.contains(target) && !list.value?.contains(target)) open.value = false;
 };
 const onKey = (e: KeyboardEvent) => {
-  if (e.key === 'Escape') {
-    open.value = false;
-    return;
-  }
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+  if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && layer.isTop()) {
     const items = [...(list.value?.querySelectorAll<HTMLButtonElement>('button:not([disabled])') ?? [])];
     const i = items.indexOf(document.activeElement as HTMLButtonElement);
     items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus();
@@ -129,7 +128,7 @@ const toggle = () => (open.value = !open.value);
 <style scoped>
 .menu-root { display: inline-flex; }
 .menu {
-  position: fixed; z-index: 60; /* above the viewer, the compare view and dialogs, like ContextMenu */ padding: var(--app-space-2) 0; overflow-y: auto;
+  position: fixed; z-index: var(--app-z-menu); padding: var(--app-space-2) 0; overflow-y: auto;
   background: var(--md-sys-color-surface-container); border-radius: var(--md-sys-shape-corner-extra-small); box-shadow: var(--app-elevation-2);
 }
 .item {

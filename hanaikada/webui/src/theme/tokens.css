@@ -72,6 +72,15 @@
   --app-width-menu: clamp(360px, 24vw, 560px);          /* the widest a menu grows for a long name */
   --app-width-text: clamp(480px, 50vw, 880px);          /* a paragraph of help or empty-state text */
 
+  /* Stacking of what opens over the page, lowest first. A dialog opens from the viewer or the
+     compare view (delete, tags, move), so it sits above both; menus open from any of them. */
+  --app-z-sheet: 30;
+  --app-z-viewer: 40;
+  --app-z-compare: 41;
+  --app-z-dialog: 50;
+  --app-z-snackbar: 55;
+  --app-z-menu: 60;
+
   /* Spacing: 4px base unit */
   --app-space-1: 4px; --app-space-2: 8px; --app-space-3: 12px; --app-space-4: 16px;
   --app-space-5: 20px; --app-space-6: 24px; --app-space-8: 32px;

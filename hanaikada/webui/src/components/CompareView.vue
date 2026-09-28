@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import { fileUrl } from '@/api/client';
 import { useImageByPath } from '@/api/queries/images';
 import { useI18n } from '@/i18n';
 import { changedFields, diffPrompts } from '@/metadata/infotext';
 import { useDialogsStore } from '@/stores/dialogs';
-import { Chip, IconButton, icons } from '@/ui';
+import { Chip, IconButton, icons, useLayer } from '@/ui';
 
 /**
  * Two images one over the other with a divider to drag across, and what differs between them:
@@ -40,12 +40,8 @@ function stop() {
   window.removeEventListener('pointermove', drag);
   window.removeEventListener('pointerup', stop);
 }
-const onKey = (e: KeyboardEvent) => e.key === 'Escape' && (dialogs.compare = null);
-watch(pair, (v) => (v ? document.addEventListener('keydown', onKey) : document.removeEventListener('keydown', onKey)));
-onBeforeUnmount(() => {
-  stop();
-  document.removeEventListener('keydown', onKey);
-});
+useLayer(() => !!pair.value, () => (dialogs.compare = null));
+onBeforeUnmount(stop);
 </script>
 
 <template>
@@ -76,7 +72,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .compare {
-  position: fixed; inset: 0; z-index: 46; display: flex; flex-direction: column;
+  position: fixed; inset: 0; z-index: var(--app-z-compare); display: flex; flex-direction: column;
   background: color-mix(in srgb, var(--md-sys-color-scrim) 94%, var(--md-sys-color-surface)); color: var(--app-color-on-scrim);
   --md-icon-button-icon-color: var(--app-color-on-scrim);
   --md-icon-button-hover-icon-color: var(--app-color-on-scrim);
