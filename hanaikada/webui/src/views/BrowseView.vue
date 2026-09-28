@@ -83,12 +83,13 @@ function writeUrl() {
   router.replace({ query: { root: rootId.value ?? undefined, path: path.value || undefined, flat: flat.value ? '1' : undefined } });
 }
 onActivated(writeUrl);
-watch([rootId, path, flat], ([r]) => {
+watch([rootId, path, flat], ([r, p], [pr, pp]) => {
   if (r) prefs.prefs.lastRoot = r;
   writeUrl();
   if (!selection.keep.value) selection.clear();
   filters.platform = filters.model = filters.sampler = null;
-  grid.value?.scrollToTop();
+  // Another folder brings a grid of its own, which starts at the top.
+  if (r === pr && p === pp) grid.value?.scrollToTop();
 });
 watch(
   () => [route.query.root, route.query.path, route.query.flat],
@@ -145,6 +146,30 @@ const error = computed(() => (isCombined.value ? combined.error.value : flat.val
 const onlyImages = computed(() => items.value.every((i) => i.kind === 'image'));
 const loadMore = () => (isCombined.value ? Promise.resolve() : flat.value ? search.fetchNextPage() : entries.fetchNextPage());
 const refresh = () => (isCombined.value ? combined.refetch() : flat.value ? search.refetch() : entries.refetch());
+// The folder whose listing is on screen. A folder still loading shows the last one's listing
+// (placeholder data), so the content changes, and slides along the x axis, once the new one is
+// there: forward into a subfolder, back up to a parent or to "All folders".
+interface Place {
+  root: string | null;
+  path: string;
+}
+const waiting = computed(() => (isCombined.value ? combined.isPlaceholderData.value : flat.value ? search.isPlaceholderData.value : entries.isPlaceholderData.value));
+const onScreen = ref<Place>({ root: rootId.value, path: path.value });
+const shownKey = computed(() => `${onScreen.value.root}\u0000${onScreen.value.path}`);
+const axisDir = ref(1);
+const isBelow = (child: string, parent: string) => child !== parent && (parent === '' || child.startsWith(`${parent}/`));
+watch([rootId, path, waiting], ([r, p, w]) => {
+  const was = onScreen.value;
+  if (w || (r === was.root && p === was.path)) return;
+  const back = r === was.root ? isBelow(was.path, p) : r === COMBINED_VIEW_ID;
+  axisDir.value = back ? -1 : 1;
+  onScreen.value = { root: r, path: p };
+});
+// The grid is replaced with each folder: keyboard focus moves to the new one.
+let refocus = false;
+const beforeLeave = (el: Element) => (refocus = el.contains(document.activeElement));
+const onEnter = () => refocus && grid.value?.focus();
+
 const missingRoots = computed(() => (combined.data.value?.missing_roots ?? []).map((id) => roots.data.value?.find((r) => r.id === id)?.name ?? id));
 
 // A remembered or pasted path that is not in this root (any more) goes back to the root's top.
@@ -351,36 +376,40 @@ onBeforeUnmount(() => stopUploads());
 
         <p v-if="isCombined && missingRoots.length" class="type-body-small muted note">{{ t('browse.missingRoots', { names: missingRoots.join(', ') }) }}</p>
 
-        <FileDropZone class="drop" :label="t('browse.dropToUpload')" :disabled="!rootId || isCombined" @files="upload">
-          <p v-if="root && !root.exists" class="type-body-medium error">{{ t('browse.missing') }}: {{ root.path }}</p>
-          <p v-else-if="error" class="type-body-medium error">{{ error.message }}</p>
-          <div v-else-if="loading && !items.length && !folders.length" class="skeletons">
-            <Skeleton v-for="i in 12" :key="i" :width="`${prefs.prefs.cellSize}px`" :height="`${prefs.prefs.cellSize}px`" shape="medium" />
-          </div>
-          <EmptyState v-else-if="!items.length && !folders.length" :icon="icons.Image" :title="t('browse.empty')" :text="isCombined ? t('browse.allFoldersEmpty') : t('browse.emptyText')" />
-          <ImageGrid
-            v-else
-            ref="grid"
-            :items="items"
-            :folders="folders"
-            :root-id="rootId"
-            :selection="selection"
-            :cell-size="prefs.prefs.cellSize"
-            :show-names="prefs.prefs.showNames"
-            :tag-colors="tagColors"
-            :favorite-id="actions.favoriteId.value"
-            :has-more="hasMore"
-            :loading-more="loadingMore"
-            :label="crumbs.map((c) => c.label).join('/')"
-            @open="openImage"
-            @preview="openImage"
-            @open-folder="navigate"
-            @up="goUp"
-            @near-end="loadMore"
-            @context="onContext"
-            @delete="runAction('delete')"
-            @transfer="(e) => dialogs.openTransfer(e.refs, e.copy, e.rootId, e.dir)"
-          />
+        <FileDropZone class="drop" :style="{ '--axis-dir': axisDir }" :label="t('browse.dropToUpload')" :disabled="!rootId || isCombined" @files="upload">
+          <Transition :name="TRANSITIONS.sharedAxisX" @before-leave="beforeLeave" @enter="onEnter">
+            <div :key="shownKey" class="stage">
+              <p v-if="root && !root.exists" class="type-body-medium error">{{ t('browse.missing') }}: {{ root.path }}</p>
+              <p v-else-if="error" class="type-body-medium error">{{ error.message }}</p>
+              <div v-else-if="loading && !items.length && !folders.length" class="skeletons">
+                <Skeleton v-for="i in 12" :key="i" :width="`${prefs.prefs.cellSize}px`" :height="`${prefs.prefs.cellSize}px`" shape="medium" />
+              </div>
+              <EmptyState v-else-if="!items.length && !folders.length" :icon="icons.Image" :title="t('browse.empty')" :text="isCombined ? t('browse.allFoldersEmpty') : t('browse.emptyText')" />
+              <ImageGrid
+                v-else
+                ref="grid"
+                :items="items"
+                :folders="folders"
+                :root-id="rootId"
+                :selection="selection"
+                :cell-size="prefs.prefs.cellSize"
+                :show-names="prefs.prefs.showNames"
+                :tag-colors="tagColors"
+                :favorite-id="actions.favoriteId.value"
+                :has-more="hasMore"
+                :loading-more="loadingMore"
+                :label="crumbs.map((c) => c.label).join('/')"
+                @open="openImage"
+                @preview="openImage"
+                @open-folder="navigate"
+                @up="goUp"
+                @near-end="loadMore"
+                @context="onContext"
+                @delete="runAction('delete')"
+                @transfer="(e) => dialogs.openTransfer(e.refs, e.copy, e.rootId, e.dir)"
+              />
+            </div>
+          </Transition>
         </FileDropZone>
       </section>
     </template>
@@ -406,8 +435,11 @@ onBeforeUnmount(() => stopUploads());
 .facets { display: flex; gap: var(--app-space-2); padding: 0 var(--app-space-4) var(--app-space-2); overflow-x: auto; scrollbar-width: thin; }
 .facets .sep { flex: none; width: 1px; background: var(--md-sys-color-outline-variant); }
 .facets .sep:last-child, .facets .sep:first-child { display: none; }
-.drop { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.drop > :deep(.image-grid) { flex: 1; }
+.drop { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-x: clip; }
+/* One folder's content; the leaving one slides out over the entering one (shared-axis-x). */
+.stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.stage.shared-axis-x-leave-active { inset-block: 0; }
+.stage > :deep(.image-grid) { flex: 1; }
 .skeletons { display: flex; flex-wrap: wrap; gap: var(--app-space-2); padding: var(--app-space-4); overflow: hidden; }
 .error { color: var(--md-sys-color-error); padding: var(--app-space-4); overflow-wrap: anywhere; }
 @media (max-width: 599px) {

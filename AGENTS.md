@@ -318,10 +318,12 @@ generated `schema.d.ts`, socket.io-client, `@material/web` wrapped in `ui/`, Luc
   re-sets the active tab after mount (`md-tabs` re-picks it). Charts are plain SVG.
 - **Layout and motion:** window classes 600/840/1200/1600 (`theme/breakpoints.ts`); a bottom bar
   when compact, a rail otherwise. Motion only through `ui/motion/` (`TRANSITIONS`): fade-through
-  between pages, shared-axis-x for tab content (`--axis-dir` on a positioned, x-clipped parent),
-  drawer, `pane` (a side pane pushing the content, by negative margin), sheet, scrim and others;
-  the viewer's page slides with `swipe-out`/`swipe-in` (a swipe drags it first; the arrows, keys
-  and slideshow too, a press mid-slide landing it and stepping on). Reduced motion becomes a short fade.
+  between pages, shared-axis-x for tab content and Browse's folder changes (`--axis-dir` on a
+  positioned, x-clipped parent; Browse keys it on the folder whose listing is shown, not the one
+  still loading, and moves focus to the new grid), drawer, `pane` (a side pane pushing the
+  content, by negative margin), sheet, scrim and others; the viewer's page slides with
+  `swipe-out`/`swipe-in` (a swipe drags it first; the arrows, keys and slideshow too, a press
+  mid-slide landing it and stepping on). Reduced motion becomes a short fade.
 - **Language:** `en`, `zh-CN`, or `auto` (default: `zh*` → Chinese, else English).
 
 ## 10. Testing

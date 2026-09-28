@@ -173,7 +173,8 @@ function onDrop(entry: GridEntry, event: DragEvent) {
   if (moving.length) emit('transfer', { refs: moving, rootId: entry.rootId, dir: target, copy: event.ctrlKey || event.altKey });
 }
 
-defineExpose({ scrollToTop: () => grid.value?.scrollToTop(), focusKey: (key: string) => {
+const root = ref<HTMLElement | null>(null);
+defineExpose({ scrollToTop: () => grid.value?.scrollToTop(), focus: () => root.value?.focus({ preventScroll: true }), focusKey: (key: string) => {
   const i = order.value.indexOf(key);
   if (i >= 0) {
     focusIndex.value = i;
@@ -183,7 +184,7 @@ defineExpose({ scrollToTop: () => grid.value?.scrollToTop(), focusKey: (key: str
 </script>
 
 <template>
-  <div class="image-grid" tabindex="0" :aria-label="label" @keydown="onKey">
+  <div ref="root" class="image-grid" tabindex="0" :aria-label="label" @keydown="onKey">
     <VirtualGrid
       ref="grid"
       :items="entries"
