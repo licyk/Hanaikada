@@ -328,7 +328,7 @@ generated `schema.d.ts`, socket.io-client, `@material/web` wrapped in `ui/`, Luc
   content, by negative margin), sheet, scrim and others; the viewer's page slides with
   `swipe-out`/`swipe-in` (a swipe drags it first; the arrows, keys and slideshow too, a press
   mid-slide landing it and stepping on). Reduced motion becomes a short fade.
-- **Language:** `en`, `zh-CN`, or `auto` (default: `zh*` → Chinese, else English).
+- **Language:** `en`, `zh-CN`, `ja`, or `auto` (default: `zh*` → Chinese, `ja*` → Japanese, else English).
 
 ## 10. Testing
 
