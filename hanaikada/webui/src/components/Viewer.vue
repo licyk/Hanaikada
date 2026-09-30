@@ -11,7 +11,7 @@ import { type ShortcutAction, usePreferencesStore } from '@/stores/preferences';
 import { useViewerStore } from '@/stores/viewer';
 import { useWindowClass } from '@/theme/breakpoints';
 import { formatBytes } from '@/format';
-import { AppButton, AppIcon, AppMenu, ContextMenu, IconButton, ProgressCircle, icons, prefersReducedMotion, type MenuItem, useLayer } from '@/ui';
+import { AppButton, AppIcon, AppMenu, ContextMenu, IconButton, ProgressCircle, collapseHooks, icons, prefersReducedMotion, type MenuItem, useLayer } from '@/ui';
 
 /**
  * The full-screen viewer over whichever list opened it. ← → walk that list and fetch its next page
@@ -433,11 +433,83 @@ function startResize(event: PointerEvent) {
   window.addEventListener('pointerup', up);
 }
 
+// -- filmstrip: the whole list on one scrolling row, only the frames in view rendered ------------------
+
+// ``.frame`` is FRAME wide with GAP between frames (--app-space-1); PAD is the track's own margin.
+const FRAME = 56;
+const GAP = 4;
+const PAD = 8;
+const PITCH = FRAME + GAP;
+const OVERSCAN = 8;
+// Scrolled within this many frames of the end, the strip asks the list for its next page.
+const END_THRESHOLD = 20;
+
+const stripEl = ref<HTMLElement | null>(null);
+const stripScroll = ref(0);
+const stripWidth = ref(0);
+let stripResize: ResizeObserver | null = null;
+
+const trackWidth = computed(() => (viewer.items.length ? 2 * PAD + viewer.items.length * PITCH - GAP : 0));
 const strip = computed(() => {
-  const i = viewer.index;
-  const from = Math.max(0, i - 12);
-  return viewer.items.slice(from, i + 13).map((x) => ({ item: x, current: x.key === item.value?.key }));
+  const items = viewer.items;
+  const first = Math.max(0, Math.floor((stripScroll.value - PAD) / PITCH) - OVERSCAN);
+  const last = Math.min(items.length - 1, Math.ceil((stripScroll.value + stripWidth.value) / PITCH) + OVERSCAN);
+  const out: { item: ImageItem; current: boolean; left: number }[] = [];
+  for (let i = first; i <= last; i++) out.push({ item: items[i], current: i === viewer.index, left: PAD + i * PITCH });
+  return out;
 });
+
+function checkStripEnd() {
+  const last = Math.floor((stripScroll.value + stripWidth.value - PAD) / PITCH);
+  if (stripEl.value && last >= viewer.items.length - 1 - END_THRESHOLD) void viewer.loadMore();
+}
+
+function onStripScroll() {
+  stripScroll.value = stripEl.value?.scrollLeft ?? 0;
+  checkStripEnd();
+}
+
+function measureStrip() {
+  if (!stripEl.value) return;
+  stripWidth.value = stripEl.value.clientWidth;
+  onStripScroll();
+}
+
+function centreCurrent(smooth: boolean) {
+  const el = stripEl.value;
+  const i = viewer.index;
+  if (!el || i < 0) return;
+  el.scrollTo({ left: PAD + i * PITCH + FRAME / 2 - el.clientWidth / 2, behavior: smooth && !prefersReducedMotion() ? 'smooth' : 'auto' });
+}
+
+// A mouse wheel turns vertically: the strip takes it as sideways. A trackpad's own sideways swipe
+// and a ctrl+wheel (the browser's zoom) pass through.
+function onStripWheel(event: WheelEvent) {
+  const el = stripEl.value;
+  if (!el || event.ctrlKey || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+  event.preventDefault();
+  const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? PITCH : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? el.clientWidth : 1;
+  el.scrollLeft += event.deltaY * unit;
+}
+
+watch(stripEl, (el) => {
+  stripResize?.disconnect();
+  stripResize = null;
+  if (!el) return;
+  stripResize = new ResizeObserver(measureStrip);
+  stripResize.observe(el);
+  measureStrip();
+  centreCurrent(false);
+});
+// After the render, so a page that just arrived has already widened the track. A step glides; opening
+// the viewer or a long jump lands at once.
+watch(
+  () => [viewer.open, viewer.index] as const,
+  ([, i], [wasOpen, before]) => centreCurrent(wasOpen && before >= 0 && Math.abs(i - before) <= 25),
+  { flush: 'post' },
+);
+watch(() => viewer.items.length, checkStripEnd, { flush: 'post' });
+onBeforeUnmount(() => stripResize?.disconnect());
 </script>
 
 <template>
@@ -518,13 +590,35 @@ const strip = computed(() => {
           </Transition>
         </div>
 
-        <nav v-if="!compact" class="strip" :aria-label="t('viewer.filmstrip')">
-          <button v-for="s in strip" :key="s.item.key" type="button" class="frame" :class="{ current: s.current }" :aria-label="s.item.name" @click="viewer.goTo(s.item.key)">
-            <img v-if="s.item.kind === 'image'" :src="thumbUrl(s.item.rootId, s.item.path, s.item.version, 128)" alt="" loading="lazy" draggable="false" />
-            <video v-else-if="s.item.kind === 'video'" :src="`${fileUrl(s.item.rootId, s.item.path, s.item.version)}#t=0.1`" muted preload="metadata" tabindex="-1" />
-            <AppIcon v-else :icon="s.item.kind === 'audio' ? icons.Music : icons.File" :size="20" />
-          </button>
-        </nav>
+        <div v-if="!compact" class="filmstrip">
+          <IconButton
+            class="strip-toggle"
+            :icon="prefs.prefs.filmstripOpen ? icons.ChevronDown : icons.ChevronUp"
+            :label="prefs.prefs.filmstripOpen ? t('viewer.hideFilmstrip') : t('viewer.showFilmstrip')"
+            @click="prefs.prefs.filmstripOpen = !prefs.prefs.filmstripOpen"
+          />
+          <Transition name="collapse" v-bind="collapseHooks">
+            <nav v-if="prefs.prefs.filmstripOpen" ref="stripEl" class="strip" :aria-label="t('viewer.filmstrip')" @scroll.passive="onStripScroll" @wheel="onStripWheel">
+              <div class="track" :style="{ width: `${trackWidth}px` }">
+                <button
+                  v-for="s in strip"
+                  :key="s.item.key"
+                  type="button"
+                  class="frame"
+                  :class="{ current: s.current }"
+                  :style="{ transform: `translateX(${s.left}px)` }"
+                  :aria-label="s.item.name"
+                  :aria-current="s.current || undefined"
+                  @click="viewer.goTo(s.item.key)"
+                >
+                  <img v-if="s.item.kind === 'image'" :src="thumbUrl(s.item.rootId, s.item.path, s.item.version, 128)" alt="" loading="lazy" draggable="false" />
+                  <video v-else-if="s.item.kind === 'video'" :src="`${fileUrl(s.item.rootId, s.item.path, s.item.version)}#t=0.1`" muted preload="metadata" tabindex="-1" />
+                  <AppIcon v-else :icon="s.item.kind === 'audio' ? icons.Music : icons.File" :size="20" />
+                </button>
+              </div>
+            </nav>
+          </Transition>
+        </div>
         <ContextMenu v-model:open="menu.open" :items="menuItems" :x="menu.x" :y="menu.y" @select="run($event as ActionId)" />
       </div>
     </Transition>
@@ -605,8 +699,17 @@ const strip = computed(() => {
 }
 .resize { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 1; }
 .resize:hover { background: color-mix(in srgb, var(--md-sys-color-primary) 30%, transparent); }
-.strip { display: flex; gap: var(--app-space-1); justify-content: center; height: 72px; padding: var(--app-space-2); overflow: hidden; }
-.frame { flex: none; width: 56px; height: 56px; padding: 0; border: 2px solid transparent; border-radius: var(--md-sys-shape-corner-small); overflow: hidden; background: var(--md-sys-color-surface-container-highest); cursor: pointer; opacity: 0.6; display: grid; place-items: center; color: var(--md-sys-color-on-surface-variant); }
+/* The toggle stays when the strip folds away, so the row keeps the header's height. */
+.filmstrip { flex: none; display: flex; align-items: center; min-height: 56px; padding-inline-start: var(--app-space-1); }
+.strip-toggle { flex: none; }
+/* A short list sits centred (auto margins); a long one scrolls, its scrollbar below the frames. The
+   track's own margins, not padding, space it: padding would stay when the strip collapses to nothing. */
+.strip {
+  flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain;
+  scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--app-color-on-scrim) 40%, transparent) transparent;
+}
+.track { position: relative; height: 56px; margin: var(--app-space-2) auto; }
+.frame { position: absolute; top: 0; left: 0; width: 56px; height: 56px; padding: 0; border: 2px solid transparent; border-radius: var(--md-sys-shape-corner-small); overflow: hidden; background: var(--md-sys-color-surface-container-highest); cursor: pointer; opacity: 0.6; display: grid; place-items: center; color: var(--md-sys-color-on-surface-variant); }
 .frame.current { border-color: var(--md-sys-color-primary); opacity: 1; }
 .frame img, .frame video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .compact .main { flex-direction: column; }

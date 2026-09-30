@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
 import { chunkUrl } from '@/api/client';
 import { useImageByPath, useRaw } from '@/api/queries/images';
 import { useCustomTags } from '@/api/queries/tags';
@@ -10,7 +9,6 @@ import { formatBytes, formatDate } from '@/format';
 import { useI18n } from '@/i18n';
 import { changedFields, diffPrompts, splitExtraNetworks } from '@/metadata/infotext';
 import { samplerLabel } from '@/metadata/samplers';
-import { encodeQuery } from '@/search/url';
 import { type InfoTab, usePreferencesStore } from '@/stores/preferences';
 import { useDialogsStore } from '@/stores/dialogs';
 import { AppIcon, Chip, DataList, ExpansionPanel, IconButton, ProgressCircle, Tabs, TRANSITIONS, icons, useSnackbar } from '@/ui';
@@ -22,7 +20,6 @@ import { AppIcon, Chip, DataList, ExpansionPanel, IconButton, ProgressCircle, Ta
 const props = defineProps<{ item: ImageItem; previous?: ImageItem | null }>();
 const { t, platformLabel, locale } = useI18n();
 const prefs = usePreferencesStore();
-const router = useRouter();
 const snackbar = useSnackbar();
 const dialogs = useDialogsStore();
 const actions = useImageActions();
@@ -109,7 +106,7 @@ function captureSelection() {
   selectedText.value = window.getSelection()?.toString().trim() ?? '';
 }
 function searchSelection(text: string) {
-  if (text) router.push({ name: 'search', query: { q: encodeQuery({ text, text_in: ['prompt'] }) } });
+  if (text) void actions.search({ text, text_in: ['prompt'] });
 }
 
 const promptParts = computed(() => splitExtraNetworks(d.value?.prompt ?? ''));

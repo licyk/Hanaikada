@@ -283,7 +283,7 @@ generated `schema.d.ts`, socket.io-client, `@material/web` wrapped in `ui/`, Luc
   `<img>` URLs rely on the token cookie.
 - **State:** server data in Vue Query; socket events invalidate it, debounced
   (`createInvalidator`); scan progress lives in `stores/scan.ts`. Interface preferences (theme,
-  colour, contrast, language, last root, cell size, sort, info tab, shortcuts) are client state:
+  colour, contrast, language, last root, cell size, sort, info tab, filmstrip, shortcuts) are client state:
   localStorage `hanaikada:preferences`, mirrored to `client_state`. `index.html` reads that key to
   set the theme before the bundle — don't rename it. The search lives in the URL
   (`search/url.ts`); the last 20 searches are client state.
@@ -297,7 +297,9 @@ generated `schema.d.ts`, socket.io-client, `@material/web` wrapped in `ui/`, Luc
   phone. Flatten is a search with `path_prefix`, not a folder walk. Grid folders carry their own
   root (`GridFolder.root_id`), which All folders (`COMBINED_VIEW_ID = '*'`) needs. Actions come
   from one list (`components/imageActions.ts`); dialogs open through `stores/dialogs.ts` and are
-  mounted once in `App.vue`. The viewer walks the list it was opened from (`stores/viewer.ts`).
+  mounted once in `App.vue`. The viewer walks the list it was opened from (`stores/viewer.ts`); its
+  filmstrip is that whole list on one virtualised row (the wheel scrolls it sideways, the current
+  frame centred), asking for the next page near its end; a toggle beside it folds it away.
 - **Video, audio, other files:** listed but not indexed (no metadata, favourites or tags). Grid
   videos are drawn by the browser from the file (`components/VideoThumb.vue`; the file route
   serves ranges): muted and looping while on screen when `prefs.videoAutoplay` (default on),

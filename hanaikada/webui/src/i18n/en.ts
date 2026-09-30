@@ -153,6 +153,8 @@ export default {
     info: 'Information',
     favorite: 'Favourite',
     filmstrip: 'Filmstrip',
+    showFilmstrip: 'Show thumbnails',
+    hideFilmstrip: 'Hide thumbnails',
     position: '{index} of {total}',
     loadingMore: 'Loading more…',
     notAnImage: 'This file cannot be shown here.',

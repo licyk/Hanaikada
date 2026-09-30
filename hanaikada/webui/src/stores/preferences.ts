@@ -37,6 +37,8 @@ export interface Preferences {
   desc: boolean;
   infoOpen: boolean;
   infoWidth: number;
+  /** The viewer's row of thumbnails is shown; collapsed, only its toggle stays. */
+  filmstripOpen: boolean;
   infoTab: InfoTab;
   slideshowSeconds: number;
   shortcuts: Record<ShortcutAction, string>;
@@ -58,6 +60,7 @@ export const DEFAULTS: Preferences = {
   desc: true,
   infoOpen: true,
   infoWidth: 420,
+  filmstripOpen: true,
   infoTab: 'parameters',
   slideshowSeconds: 4,
   shortcuts: { ...DEFAULT_SHORTCUTS },

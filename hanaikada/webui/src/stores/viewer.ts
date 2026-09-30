@@ -34,6 +34,19 @@ export const useViewerStore = defineStore('viewer', () => {
     open.value = false;
   }
 
+  /** Fetch the source's next page, once at a time; false when there was nothing to fetch. */
+  async function loadMore(): Promise<boolean> {
+    const src = source.value;
+    if (!src?.hasMore?.() || !src.loadMore || loading.value) return false;
+    loading.value = true;
+    try {
+      await src.loadMore();
+      return true;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   async function next() {
     const list = items.value;
     if (index.value < 0) return;
@@ -41,18 +54,10 @@ export const useViewerStore = defineStore('viewer', () => {
       key.value = list[index.value + 1].key;
       return;
     }
-    const src = source.value;
-    if (src?.hasMore?.() && src.loadMore && !loading.value) {
-      loading.value = true;
-      try {
-        const before = list.length;
-        await src.loadMore();
-        const after = items.value;
-        if (after.length > before) key.value = after[before].key;
-      } finally {
-        loading.value = false;
-      }
-    }
+    const before = list.length;
+    if (!(await loadMore())) return;
+    const after = items.value;
+    if (after.length > before) key.value = after[before].key;
   }
 
   function previous() {
@@ -75,5 +80,5 @@ export const useViewerStore = defineStore('viewer', () => {
     key.value = rest[Math.min(at, rest.length - 1)].key;
   }
 
-  return { open, source, key, loading, items, index, current, previousItem, show, close, next, previous, goTo, removed };
+  return { open, source, key, loading, items, index, current, previousItem, show, close, loadMore, next, previous, goTo, removed };
 });

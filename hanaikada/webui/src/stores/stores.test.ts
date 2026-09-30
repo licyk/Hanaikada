@@ -27,6 +27,17 @@ describe('viewer list navigation', () => {
     expect(viewer.previousItem?.name).toBe('1.png');
   });
 
+  it('fetches one page at a time for the filmstrip without moving', async () => {
+    const list = ref([item(1)]);
+    let loads = 0;
+    const viewer = useViewerStore();
+    viewer.show({ items: () => list.value, hasMore: () => loads < 1, loadMore: async () => ((loads += 1), (list.value = [...list.value, item(2)])) }, 'r:1.png');
+    const [first, second] = await Promise.all([viewer.loadMore(), viewer.loadMore()]);
+    expect([first, second, loads]).toEqual([true, false, 1]);
+    expect(await viewer.loadMore()).toBe(false);
+    expect(viewer.current?.name).toBe('1.png');
+  });
+
   it('follows the current image when the list changes, and moves on after a delete', () => {
     const list = ref([item(1), item(2), item(3)]);
     const viewer = useViewerStore();

@@ -17,6 +17,7 @@ export {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   CircleHelp,
   Clock,
   Columns2,

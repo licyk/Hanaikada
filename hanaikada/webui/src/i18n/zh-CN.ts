@@ -153,6 +153,8 @@ export default {
     info: '信息',
     favorite: '收藏',
     filmstrip: '胶片条',
+    showFilmstrip: '显示缩略图',
+    hideFilmstrip: '隐藏缩略图',
     position: '第 {index} / {total} 张',
     loadingMore: '正在加载更多…',
     notAnImage: '无法在这里显示这个文件。',

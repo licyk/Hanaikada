@@ -15,9 +15,10 @@ import type { HostTarget } from '@/host/bridge';
 import { type GridEntry, isWholeRoot } from '@/components/gridKeyboard';
 import { useI18n } from '@/i18n';
 import { toInfotext } from '@/metadata/infotext';
-import { encodeQuery } from '@/search/url';
+import { encodeQuery, type QueryState } from '@/search/url';
 import { useDialogsStore } from '@/stores/dialogs';
 import { useHostStore } from '@/stores/host';
+import { useViewerStore } from '@/stores/viewer';
 import { icons, type MenuItem, useSnackbar } from '@/ui';
 
 export type ActionId =
@@ -75,6 +76,7 @@ export function useImageActions() {
   const meta = useMeta();
   const snackbar = useSnackbar();
   const dialogs = useDialogsStore();
+  const viewer = useViewerStore();
   const host = useHostStore();
   const library = useLibraryMutations();
   const tagMutations = useTagMutations();
@@ -182,12 +184,18 @@ export function useImageActions() {
     await tagMutations.apply.mutateAsync({ id: favoriteId.value, add: on, body: { image_ids: [], paths: items.map((i) => [i.rootId, i.path] as [string, string]) } });
   }
 
+  /** Open the search page on ``query``. Started from the viewer, the viewer closes so the results show. */
+  function search(query: QueryState) {
+    viewer.close();
+    return router.push({ name: 'search', query: { q: encodeQuery(query) } });
+  }
+
   function similar(item: ImageItem, by: 'seed' | 'model' | 'prompt') {
     const record = item.image;
     if (!record) return;
     const query =
       by === 'seed' ? { seed: (record.seed ?? undefined) as number | undefined } : by === 'model' ? { models: record.model_name ? [record.model_name] : [] } : { text: (record.prompt ?? '').slice(0, 120), text_in: ['prompt' as const] };
-    router.push({ name: 'search', query: { q: encodeQuery(query) } });
+    void search(query);
   }
 
   /** Run an action over entries. ``openImage`` and ``openFolder`` come from the screen that asked. */
@@ -286,5 +294,5 @@ export function useImageActions() {
     }
   }
 
-  return { menuFor, run, favoriteId, isFavorite, setFavorite, detail, sendItems };
+  return { menuFor, run, search, favoriteId, isFavorite, setFavorite, detail, sendItems };
 }
