@@ -153,6 +153,8 @@ export default {
     info: '情報',
     favorite: 'お気に入り',
     filmstrip: 'フィルムストリップ',
+    showFilmstrip: 'サムネイルを表示',
+    hideFilmstrip: 'サムネイルを非表示',
     position: '{total} 中 {index}',
     loadingMore: 'さらに読み込み中…',
     notAnImage: 'このファイルはここでは表示できません。',
