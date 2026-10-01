@@ -5,10 +5,10 @@ import type { ListSort } from '@/api/types';
 import type { ThemeMode } from '@/theme/applyTheme';
 import { DEFAULT_SOURCE_COLOR } from '@/theme/scheme';
 
-export type Locale = 'en' | 'zh-CN';
+export type Locale = 'en' | 'zh-CN' | 'ja';
 /** A locale, or ``auto`` to follow the system's language. */
 export type LocalePreference = Locale | 'auto';
-const LOCALE_PREFERENCES: LocalePreference[] = ['auto', 'en', 'zh-CN'];
+const LOCALE_PREFERENCES: LocalePreference[] = ['auto', 'en', 'zh-CN', 'ja'];
 export type InfoTab = 'parameters' | 'prompt' | 'raw' | 'info';
 export type ShortcutAction = 'favorite' | 'delete' | 'download' | 'copyPrompt' | 'toggleInfo' | 'next' | 'previous' | 'slideshow';
 

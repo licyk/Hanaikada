@@ -1,19 +1,22 @@
 import { computed, ref } from 'vue';
 import en from '@/i18n/en';
+import ja from '@/i18n/ja';
 import zhCN from '@/i18n/zh-CN';
 import { usePreferencesStore, type Locale, type LocalePreference } from '@/stores/preferences';
 
 type Messages = typeof en;
-const MESSAGES: Record<Locale, Messages> = { en, 'zh-CN': zhCN };
+const MESSAGES: Record<Locale, Messages> = { en, 'zh-CN': zhCN, ja };
 export const LOCALES: { value: Locale; label: string }[] = [
   { value: 'en', label: 'English' },
   { value: 'zh-CN', label: '简体中文' },
+  { value: 'ja', label: '日本語' },
 ];
 
 /** The supported locale for a BCP 47 language tag, or English for one Hanaikada has no translation for. */
 export function detectLocale(tag: string | null | undefined): Locale {
   const lower = (tag ?? '').toLowerCase();
   if (lower === 'zh' || lower.startsWith('zh-')) return 'zh-CN';
+  if (lower === 'ja' || lower.startsWith('ja-')) return 'ja';
   return 'en';
 }
 

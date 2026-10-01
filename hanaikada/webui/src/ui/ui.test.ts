@@ -140,9 +140,11 @@ describe('theme', () => {
 describe('i18n and formatting', () => {
   it('translates with parameters and falls back to English', () => {
     expect(translate('zh-CN', 'selection.selected', { n: 3 })).toBe('已选择 3 项');
+    expect(translate('ja', 'selection.selected', { n: 3 })).toBe('3 件を選択中');
     expect(translate('en', 'selection.selected', { n: 3 })).toBe('3 selected');
     expect(translate('en', 'no.such.key')).toBe('no.such.key');
     expect(translateList('zh-CN', 'stats.days')).toHaveLength(7);
+    expect(translateList('ja', 'stats.days')).toEqual(['日', '月', '火', '水', '木', '金', '土']);
   });
   it('formats sizes and paths', () => {
     expect(formatBytes(1536)).toBe('1.5 KB');
