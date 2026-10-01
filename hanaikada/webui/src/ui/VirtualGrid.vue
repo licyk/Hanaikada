@@ -55,7 +55,27 @@ function measure() {
   if (!el?.clientWidth) return;
   width.value = el.clientWidth;
   height.value = el.clientHeight;
+  holdPlace(el);
   checkEnd();
+}
+
+// Something opening or closing above the grid (the selection bar) moves the grid's top edge. Once
+// scrolled, the offset follows it, so the cells stay where they are on screen and the newcomer
+// takes its room from the top of the view; at the very top the cells move down with the edge.
+let lastTop: number | null = null;
+let carry = 0;
+function holdPlace(el: HTMLElement) {
+  const top = el.getBoundingClientRect().top;
+  const moved = lastTop === null ? 0 : top - lastTop;
+  lastTop = top;
+  if (!moved || el.scrollTop <= 0) {
+    carry = 0;
+    return;
+  }
+  // The offset may land on whole pixels only: what it drops is carried into the next step.
+  const want = el.scrollTop + moved + carry;
+  el.scrollTop = want;
+  carry = Math.abs(want - el.scrollTop) < 1 ? want - el.scrollTop : 0;
 }
 
 function onScroll() {
@@ -84,6 +104,8 @@ function scrollToTop() {
 
 watch(() => props.items.length, () => requestAnimationFrame(checkEnd));
 useKeepScroll(scroller, () => {
+  // Whatever moved while the page was away is not followed.
+  lastTop = null;
   measure();
   onScroll();
 });

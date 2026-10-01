@@ -479,17 +479,52 @@ function centreCurrent(smooth: boolean) {
   const el = stripEl.value;
   const i = viewer.index;
   if (!el || i < 0) return;
+  stopWheel();
   el.scrollTo({ left: PAD + i * PITCH + FRAME / 2 - el.clientWidth / 2, behavior: smooth && !prefersReducedMotion() ? 'smooth' : 'auto' });
 }
 
-// A mouse wheel turns vertically: the strip takes it as sideways. A trackpad's own sideways swipe
-// and a ctrl+wheel (the browser's zoom) pass through.
+// A mouse wheel turns vertically: the strip takes it as sideways, gliding to where the wheel has
+// sent it rather than jumping a notch at a time. A trackpad's own sideways swipe and a ctrl+wheel
+// (the browser's zoom) pass through.
+const WHEEL_EASE_MS = 90;
+let wheelTarget = 0;
+let wheelAt = 0;
+let wheelTime = 0;
+let wheelFrame = 0;
+
+function stopWheel() {
+  cancelAnimationFrame(wheelFrame);
+  wheelFrame = 0;
+}
+
+function stepWheel(now: number) {
+  const el = stripEl.value;
+  if (!el) {
+    wheelFrame = 0;
+    return;
+  }
+  const rest = wheelTarget - wheelAt;
+  // The same share of what is left in the same time, whatever the frame rate.
+  wheelAt = Math.abs(rest) < 0.5 ? wheelTarget : wheelAt + rest * (1 - Math.exp(-(now - wheelTime) / WHEEL_EASE_MS));
+  wheelTime = now;
+  el.scrollLeft = wheelAt;
+  wheelFrame = wheelAt === wheelTarget ? 0 : requestAnimationFrame(stepWheel);
+}
+
 function onStripWheel(event: WheelEvent) {
   const el = stripEl.value;
   if (!el || event.ctrlKey || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
   event.preventDefault();
   const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? PITCH : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? el.clientWidth : 1;
-  el.scrollLeft += event.deltaY * unit;
+  if (!wheelFrame) wheelTarget = wheelAt = el.scrollLeft;
+  wheelTarget = Math.max(0, Math.min(el.scrollWidth - el.clientWidth, wheelTarget + event.deltaY * unit));
+  if (prefersReducedMotion()) {
+    el.scrollLeft = wheelTarget;
+  } else if (!wheelFrame) {
+    // A frame's worth behind, so the first step already moves.
+    wheelTime = performance.now() - 16;
+    wheelFrame = requestAnimationFrame(stepWheel);
+  }
 }
 
 watch(stripEl, (el) => {
@@ -509,7 +544,10 @@ watch(
   { flush: 'post' },
 );
 watch(() => viewer.items.length, checkStripEnd, { flush: 'post' });
-onBeforeUnmount(() => stripResize?.disconnect());
+onBeforeUnmount(() => {
+  stripResize?.disconnect();
+  stopWheel();
+});
 </script>
 
 <template>

@@ -298,8 +298,11 @@ generated `schema.d.ts`, socket.io-client, `@material/web` wrapped in `ui/`, Luc
   root (`GridFolder.root_id`), which All folders (`COMBINED_VIEW_ID = '*'`) needs. Actions come
   from one list (`components/imageActions.ts`); dialogs open through `stores/dialogs.ts` and are
   mounted once in `App.vue`. The viewer walks the list it was opened from (`stores/viewer.ts`); its
-  filmstrip is that whole list on one virtualised row (the wheel scrolls it sideways, the current
-  frame centred), asking for the next page near its end; a toggle beside it folds it away.
+  filmstrip is that whole list on one virtualised row (the wheel scrolls it sideways, eased frame
+  by frame towards a target; the current frame centred), asking for the next page near its end; a
+  toggle beside it folds it away. The selection bar opens above the grid: once scrolled, the grid
+  keeps its cells in place by moving its offset with its top edge (`VirtualGrid.holdPlace`), so
+  only a grid at the very top slides down.
 - **Video, audio, other files:** listed but not indexed (no metadata, favourites or tags). Grid
   videos are drawn by the browser from the file (`components/VideoThumb.vue`; the file route
   serves ranges): muted and looping while on screen when `prefs.videoAutoplay` (default on),
