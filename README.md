@@ -93,6 +93,7 @@ server = HanaikadaServer(
     data_dir="./hanaikada-data",
     image_roots=[ImageRoot("/srv/ComfyUI", name="ComfyUI")],
     lock_image_roots=True,        # the user cannot add, change or remove folders
+    combined_view=True,           # offer "All folders" in Browse; shown locked in the settings
     port=0,                       # any free port
     api_prefix="/images",         # keep clear of the host's own routes
 )

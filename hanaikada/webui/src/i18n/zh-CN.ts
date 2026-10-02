@@ -1,5 +1,5 @@
 export default {
-  app: { title: '花筏', tagline: '水面上的花瓣：重新找到你生成的每一张图。' },
+  app: { title: 'Hanaikada', tagline: '水面上的花瓣：重新找到你生成的每一张图。' },
   nav: { browse: '浏览', search: '搜索', tags: '标签', stats: '统计', settings: '设置', activity: '活动' },
   common: {
     cancel: '取消',
@@ -326,7 +326,7 @@ export default {
     removeTitle: '移除 {name}？',
     removeText: '文件保留在磁盘上；只忘记这个文件夹和它的索引。',
     outputs: '输出目录',
-    locked: '这些文件夹由启动花筏的应用程序设定。',
+    locked: '这些文件夹由启动 Hanaikada 的应用程序设定。',
     missing: '文件夹不存在',
   },
   uploads: { title: '上传', done: '已上传 {name}', failed: '{name} 上传失败：{error}', uploading: '正在上传 {n} 个文件' },
@@ -398,6 +398,7 @@ export default {
     tokenConfigured: '已设置令牌。',
     restartNeeded: '重启后生效。',
     envOverrides: '由环境变量设定',
+    pinned: '由启动 Hanaikada 的应用程序设定。',
     version: '版本',
     dataDir: '数据目录',
     settingsFile: '设置文件',

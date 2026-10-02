@@ -1,5 +1,5 @@
 export default {
-  app: { title: '花筏', tagline: '水に浮かぶ花びら。生成した画像を、もう一度見つけよう。' },
+  app: { title: 'Hanaikada', tagline: '水に浮かぶ花びら。生成した画像を、もう一度見つけよう。' },
   nav: { browse: '閲覧', search: '検索', tags: 'タグ', stats: '統計', settings: '設定', activity: 'アクティビティ' },
   common: {
     cancel: 'キャンセル',
@@ -326,7 +326,7 @@ export default {
     removeTitle: '{name} を削除しますか？',
     removeText: 'ファイルはディスクに残ります。フォルダとそのインデックス情報だけを削除します。',
     outputs: '出力フォルダ',
-    locked: 'これらのフォルダは、花筏を起動したアプリケーションが設定しています。',
+    locked: 'これらのフォルダは、Hanaikada を起動したアプリケーションが設定しています。',
     missing: 'フォルダがありません',
   },
   uploads: { title: 'アップロード', done: '{name} をアップロードしました', failed: '{name} のアップロードに失敗: {error}', uploading: '{n} 件のファイルをアップロード中' },
@@ -398,6 +398,7 @@ export default {
     tokenConfigured: 'トークンが設定されています。',
     restartNeeded: '再起動後に有効になります。',
     envOverrides: '環境変数で設定されています',
+    pinned: 'Hanaikada を起動したアプリケーションが設定しています。',
     version: 'バージョン',
     dataDir: 'データフォルダ',
     settingsFile: '設定ファイル',

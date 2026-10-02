@@ -398,6 +398,7 @@ export default {
     tokenConfigured: 'A token is set.',
     restartNeeded: 'Takes effect after a restart.',
     envOverrides: 'Set by environment variables',
+    pinned: 'Set by the application that started Hanaikada.',
     version: 'Version',
     dataDir: 'Data directory',
     settingsFile: 'Settings file',

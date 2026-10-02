@@ -45,6 +45,14 @@ def test_host_overrides_win_and_are_never_written(tmp_path):
     assert s.settings.index.watch_interval == 5
 
 
+def test_pinned_settings_are_named_in_the_view(tmp_path):
+    s = SettingsService(data_dir=tmp_path, environ={}, overrides={"library": {"combined_view": True}, "server": {"access_token": "secret"}})
+    view = s.view()
+    assert view.pinned == ["library.combined_view", "server.access_token"]
+    assert "secret" not in view.model_dump_json()
+    assert SettingsService(data_dir=tmp_path / "other", environ={}).view().pinned == []
+
+
 def test_invalid_values_rejected(tmp_path):
     s = SettingsService(data_dir=tmp_path, environ={})
     with pytest.raises(ValidationError):

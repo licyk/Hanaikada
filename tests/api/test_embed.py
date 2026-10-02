@@ -88,6 +88,31 @@ def test_pinned_settings_and_settings_path(tmp_path):
         assert config.is_file() and (tmp_path / "data" / "hanaikada.db").is_file()
 
 
+@pytest.mark.parametrize("value", [True, False])
+def test_combined_view_can_be_pinned(tmp_path, value):
+    server = HanaikadaServer(data_dir=tmp_path / "data", port=0, combined_view=value, settings={"library": {"show_all_files": True}})
+    services = server._build()
+    try:
+        services.settings.update({"library": {"combined_view": not value}})
+        assert services.settings.settings.library.combined_view is value
+        # Pinning it keeps the host's other library settings.
+        assert services.settings.settings.library.show_all_files is True
+        assert "library.combined_view" in services.settings.view().pinned
+    finally:
+        services.close()
+
+
+def test_combined_view_is_left_to_the_user_by_default(tmp_path):
+    services = HanaikadaServer(data_dir=tmp_path / "data", port=0)._build()
+    try:
+        assert services.settings.settings.library.combined_view is False
+        assert "library.combined_view" not in services.settings.view().pinned
+        services.settings.update({"library": {"combined_view": True}})
+        assert services.settings.settings.library.combined_view is True
+    finally:
+        services.close()
+
+
 def test_generic_folder_names_take_the_parent_name(tmp_path):
     core = tmp_path / "ComfyUI-portable" / "core"
     core.mkdir(parents=True)

@@ -7,6 +7,7 @@
         settings_path="./my-app/hanaikada.toml",                # put the settings file where you like
         image_roots=[ImageRoot("/srv/ComfyUI", layout="comfyui", name="ComfyUI")],
         lock_image_roots=True,                                  # the user cannot change them
+        combined_view=True,                                     # Browse offers "All folders"
         port=0,                                                 # 0: any free port
         api_prefix="/images",                                   # keeps our routes out of yours
     )
@@ -82,6 +83,7 @@ class HanaikadaServer:
         settings_path: str | Path | None = None,
         image_roots: Iterable[ImageRoot | str | Path] | None = None,
         lock_image_roots: bool = False,
+        combined_view: bool | None = None,
         host: str | None = None,
         port: int | None = None,
         strict_port: bool = False,
@@ -100,6 +102,10 @@ class HanaikadaServer:
         ``image_roots`` are folders of images, each with its own layout. With
         ``lock_image_roots`` they are fixed: the API refuses to add, change or remove a folder
         and the interface hides those actions.
+
+        ``combined_view`` pins Browse's "All folders" entry, which lists every folder's output
+        folders side by side: ``True`` offers it, ``False`` hides it, and ``None`` leaves the
+        choice to the user (it is off by default). A pinned value shows locked in the settings.
 
         ``port`` is ``0`` for any free port, a number to ask for that one (moving up when it is
         taken, unless ``strict_port``), or ``None`` for the port in the settings.
@@ -133,6 +139,8 @@ class HanaikadaServer:
         server_overrides["open_browser"] = open_browser
         if server_overrides:
             overrides["server"] = server_overrides
+        if combined_view is not None:
+            overrides["library"] = {**(overrides.get("library") or {}), "combined_view": combined_view}
         # Locked roots are an override, so they cannot be edited or lost; unlocked ones are a
         # starting point the user may add to, so they are saved normally at start-up.
         if image_roots is not None and lock_image_roots:

@@ -1794,6 +1794,8 @@ export interface components {
             content: components["schemas"]["ContentSettings"];
             /** Env Overrides */
             env_overrides: string[];
+            /** Pinned */
+            pinned: string[];
         };
         /** Stats */
         Stats: {

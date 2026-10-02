@@ -104,3 +104,5 @@ class SettingsView(Record):
     library: LibrarySettings
     content: ContentSettings
     env_overrides: list[str]
+    pinned: list[str]
+    """Dotted names of the settings a host application pinned; changing them has no effect."""

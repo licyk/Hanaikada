@@ -35,6 +35,8 @@ function save(patch: Record<string, unknown>, restart = false) {
 }
 const num = (v: string | number | null) => (v === '' || v === null ? null : Number(v));
 const list = (v: string, sep = /[\s,]+/) => v.split(sep).map((x) => x.trim()).filter(Boolean);
+/** A value the host application pinned would snap back after saving, so its switch is disabled. */
+const isPinned = (dotted: string) => s.value?.pinned.includes(dotted) ?? false;
 const envNote = (key: string) => (s.value?.env_overrides.includes(key) ? t('settings.envOverrides') : undefined);
 
 // -- roots ----------------------------------------------------------------------------------------
@@ -169,7 +171,7 @@ async function clearCache() {
         <h2 class="type-title-large">{{ t('settings.sections.library') }} &amp; {{ t('settings.sections.content') }}</h2>
         <Switch :model-value="s.library.delete_to_trash" :label="t('settings.deleteToTrash')" :supporting-text="t('settings.deleteToTrashHelp', { where: meta.data.value?.trash_location ?? '' })" @update:model-value="save({ library: { delete_to_trash: $event } })" />
         <Switch :model-value="s.library.show_all_files" :label="t('settings.showAllFiles')" :supporting-text="t('settings.showAllFilesHelp')" @update:model-value="save({ library: { show_all_files: $event } })" />
-        <Switch :model-value="s.library.combined_view" :label="t('settings.combinedView')" :supporting-text="t('settings.combinedViewHelp')" @update:model-value="save({ library: { combined_view: $event } })" />
+        <Switch :model-value="s.library.combined_view" :label="t('settings.combinedView')" :supporting-text="isPinned('library.combined_view') ? t('settings.pinned') : t('settings.combinedViewHelp')" :disabled="isPinned('library.combined_view')" @update:model-value="save({ library: { combined_view: $event } })" />
         <TextField :model-value="s.library.sidecar_extensions.join(' ')" :label="t('settings.sidecars')" :supporting-text="t('settings.sidecarsHelp')" @change="save({ library: { sidecar_extensions: list($event) } })" />
         <TextField :model-value="s.content.blur_tags.join(', ')" :label="t('settings.blurTags')" :supporting-text="t('settings.blurTagsHelp')" @change="save({ content: { blur_tags: list($event, /,/) } })" />
       </Surface>

@@ -269,7 +269,10 @@ served only inside output folders** (an install root never serves `config.json`)
   then sends the image alone, never stale parameters. The targets appear in every action menu and
   as the viewer's Send button; without a host nothing shows.
 - **Embedding** (`embed.py`): `HanaikadaServer(...).start()/stop()` and `ImageRoot`. Pinned
-  settings and locked roots can't be changed anywhere (`/app/meta` reports `roots_locked`). A
+  settings and locked roots can't be changed anywhere (`/app/meta` reports `roots_locked`; the
+  settings view lists `pinned` dotted names). `combined_view=True`/`False` pins
+  `library.combined_view` (`None` leaves it to the user); the settings page shows it disabled,
+  "set by the application that started Hanaikada". The product name is never translated. A
   host mounting `create_app(services)` itself enters `app.router.lifespan_context` and closes the
   services.
 
