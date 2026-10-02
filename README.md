@@ -2,6 +2,8 @@
 
 # Hanaikada 花筏
 
+English | [简体中文](README_zh-CN.md)
+
 </div>
 
 Browse, search and manage the images you made with **Stable Diffusion WebUI**, **ComfyUI**
