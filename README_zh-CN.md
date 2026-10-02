@@ -2,6 +2,27 @@
 
 # Hanaikada 花筏
 
+<p align="center">
+  <a href="https://github.com/licyk/Hanaikada/stargazers">
+    <img src="https://img.shields.io/github/stars/licyk/Hanaikada?style=flat&logo=github&logoColor=silver&color=bluegreen&labelColor=grey" alt="Stars">
+  </a>
+  <a href="https://github.com/licyk/Hanaikada/issues">
+    <img src="https://img.shields.io/github/issues/licyk/Hanaikada?style=flat&logo=github&logoColor=silver&color=bluegreen&labelColor=grey" alt="Issues">
+  </a>
+  <a href="https://github.com/licyk/Hanaikada/commits/main">
+    <img src="https://flat.badgen.net/github/last-commit/licyk/Hanaikada/main?icon=github&color=green&label=last%20main%20commit" alt="Last main commit">
+  </a>
+  <a href="https://github.com/licyk/Hanaikada/actions/workflows/release.yml">
+    <img src="https://github.com/licyk/Hanaikada/actions/workflows/release.yml/badge.svg" alt="Release">
+  </a>
+  <a href="https://pypi.org/project/hanaikada/">
+    <img src="https://img.shields.io/pypi/v/hanaikada?style=flat&logo=pypi&logoColor=silver&color=bluegreen&labelColor=grey" alt="PyPI version">
+  </a>
+  <a href="https://pypi.org/project/hanaikada/">
+    <img src="https://img.shields.io/pypi/pyversions/hanaikada?style=flat&logo=python&logoColor=silver&color=bluegreen&labelColor=grey" alt="Python versions">
+  </a>
+</p>
+
 [English](README.md) | 简体中文
 
 </div>
