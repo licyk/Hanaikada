@@ -325,9 +325,14 @@ generated `schema.d.ts`, socket.io-client, `@material/web` wrapped in `ui/`, Luc
   `@material/web` is in maintenance mode, so a broken one is replaced inside `ui/`. `ui/Tabs.vue`
   re-sets the active tab after mount (`md-tabs` re-picks it). Charts are plain SVG.
 - **Layers:** stacking comes only from the `--app-z-*` tokens (sheet < viewer < compare < dialog <
-  snackbar < menu: dialogs open from the viewer, so they sit above it). Everything modal registers
-  with `ui/useLayer`: Escape closes only the topmost layer, and a layer's own shortcuts wait while
-  another is on top (`isTop()`); no hand-kept list of which dialogs are open.
+  snackbar < menu: dialogs open from the viewer, so they sit above it). Everything modal — dialogs,
+  sheets, menus, the viewer, the compare view, Browse's drawer — registers with
+  `ui/useLayer(active, onKey)` instead of listening on the document, and only the topmost layer
+  receives keys: one Escape closes one layer, a viewer under a dialog never sees its keys, and a
+  dialog's Tab trap (`trapFocus`) cannot pull focus out of a layer above it. A key a layer acts on
+  is `preventDefault`-ed; one already claimed (a select's list, the grid clearing its selection)
+  is left alone. Full-screen layers take focus while open and give it back. A kept-alive page
+  gives up its layer while hidden. No hand-kept list of which dialogs are open.
 - **Layout and motion:** window classes 600/840/1200/1600 (`theme/breakpoints.ts`); a bottom bar
   when compact, a rail otherwise. Motion only through `ui/motion/` (`TRANSITIONS`): fade-through
   between pages, shared-axis-x for tab content and Browse's folder changes (`--axis-dir` on a

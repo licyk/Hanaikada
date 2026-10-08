@@ -54,5 +54,5 @@ export * as icons from '@/ui/icons';
 export { collapseHooks, prefersReducedMotion, staggerStyle, TRANSITIONS } from '@/ui/motion/transitions';
 export { useElementHeight } from '@/ui/useElementHeight';
 export { useKeepScroll } from '@/ui/useKeepScroll';
-export { layerOpen, useLayer } from '@/ui/useLayer';
+export { closeOnEscape, layerOpen, trapFocus, useLayer } from '@/ui/useLayer';
 export { useSnackbar } from '@/ui/useSnackbar';

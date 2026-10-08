@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 import IconButton from '@/ui/IconButton.vue';
 import { X } from '@/ui/icons';
 import { containerFrom } from '@/ui/motion/transitions';
-import { useLayer } from '@/ui/useLayer';
+import { trapFocus, useLayer } from '@/ui/useLayer';
 
 /**
  * A modal dialog built from the tokens. With ``fromRect`` it grows from that rectangle (the
@@ -15,31 +15,21 @@ const emit = defineEmits<{ closed: [] }>();
 const panel = ref<HTMLElement | null>(null);
 const motionStyle = ref<Record<string, string>>({});
 let previousFocus: HTMLElement | null = null;
-const layer = useLayer(() => open.value, () => (open.value = false));
-
-// Escape comes through the layer; a menu open over the dialog keeps Tab to itself.
+// Escape and Tab come through the layer, so a menu or the viewer open above the dialog keeps them.
 function onKey(event: KeyboardEvent) {
-  if (event.key === 'Tab' && panel.value && layer.isTop()) {
-    const focusable = panel.value.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"]), md-filled-button, md-outlined-button, md-text-button, md-filled-tonal-button, md-icon-button');
-    if (!focusable.length) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      last.focus();
-      event.preventDefault();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      first.focus();
-      event.preventDefault();
-    }
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    open.value = false;
   }
+  trapFocus(event, panel.value);
 }
+useLayer(() => open.value, onKey);
 
 watch(
   open,
   async (value) => {
     if (value) {
       previousFocus = document.activeElement as HTMLElement | null;
-      document.addEventListener('keydown', onKey);
       motionStyle.value = {};
       await nextTick();
       // Offsets ignore the enter transform already applied, unlike getBoundingClientRect().
@@ -47,13 +37,11 @@ watch(
       motionStyle.value = p ? containerFrom(props.fromRect, new DOMRect(p.offsetLeft, p.offsetTop, p.offsetWidth, p.offsetHeight)) : {};
       panel.value?.focus();
     } else {
-      document.removeEventListener('keydown', onKey);
       previousFocus?.focus?.();
     }
   },
   { immediate: true },
 );
-onBeforeUnmount(() => document.removeEventListener('keydown', onKey));
 </script>
 
 <template>

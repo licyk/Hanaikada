@@ -115,6 +115,8 @@ function onKey(event: KeyboardEvent) {
     event.preventDefault();
     props.selection.selectAll(order.value);
   } else if (event.key === 'Escape' && props.selection.count.value) {
+    // Claimed, so the same Escape does not also close the drawer beside the grid.
+    event.preventDefault();
     props.selection.clear();
   } else if (event.key === 'Delete' && (props.selection.count.value || entry)) {
     if (!props.selection.count.value && entry) props.selection.click(entry.key, order.value);

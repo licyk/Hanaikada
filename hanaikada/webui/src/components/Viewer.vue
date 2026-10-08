@@ -11,7 +11,7 @@ import { type ShortcutAction, usePreferencesStore } from '@/stores/preferences';
 import { useViewerStore } from '@/stores/viewer';
 import { useWindowClass } from '@/theme/breakpoints';
 import { formatBytes } from '@/format';
-import { AppButton, AppIcon, AppMenu, ContextMenu, IconButton, ProgressCircle, collapseHooks, icons, prefersReducedMotion, type MenuItem, useLayer } from '@/ui';
+import { AppButton, AppIcon, AppMenu, ContextMenu, IconButton, ProgressCircle, collapseHooks, icons, prefersReducedMotion, trapFocus, type MenuItem, useLayer } from '@/ui';
 
 /**
  * The full-screen viewer over whichever list opened it. ← → walk that list and fetch its next page
@@ -340,14 +340,19 @@ function matches(action: ShortcutAction, event: KeyboardEvent): boolean {
   return !!key && (event.key === key || event.key.toLowerCase() === key.toLowerCase());
 }
 
-// Escape stops the slideshow, then closes. A dialog or menu opened over the viewer takes the keys.
-const layer = useLayer(
-  () => viewer.open,
-  () => (playing.value ? (playing.value = false) : viewer.close()),
-);
+// A layer, so a dialog or menu opened over the viewer takes the keys, and Tab stays inside it.
+const shell = ref<HTMLElement | null>(null);
+let previousFocus: HTMLElement | null = null;
 
 function onKey(event: KeyboardEvent) {
-  if (!viewer.open || !layer.isTop()) return;
+  trapFocus(event, shell.value);
+  if (event.key === 'Escape') {
+    // Stops the slideshow, then closes.
+    event.preventDefault();
+    if (playing.value) playing.value = false;
+    else viewer.close();
+    return;
+  }
   const target = event.target as HTMLElement | null;
   if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
   if (event.ctrlKey || event.metaKey || event.altKey) return;
@@ -393,18 +398,23 @@ function onKey(event: KeyboardEvent) {
   }
 }
 
+useLayer(() => viewer.open, onKey);
+
 watch(
   () => viewer.open,
   async (open) => {
     if (open) {
-      document.addEventListener('keydown', onKey);
       document.body.style.overflow = 'hidden';
+      // Focus moves in, so the grid it opened from no longer sees the keys meant for the viewer.
+      previousFocus = document.activeElement as HTMLElement | null;
       await nextTick();
+      shell.value?.focus();
       measure();
       preload();
     } else {
-      document.removeEventListener('keydown', onKey);
       document.body.style.overflow = '';
+      previousFocus?.focus?.();
+      previousFocus = null;
       playing.value = false;
       generation++;
       settle?.();
@@ -414,7 +424,6 @@ watch(
   },
 );
 onBeforeUnmount(() => {
-  document.removeEventListener('keydown', onKey);
   clearInterval(timer);
   resize?.disconnect();
 });
@@ -553,7 +562,7 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <Transition name="scrim">
-      <div v-if="viewer.open && item" class="viewer" :class="{ compact, 'with-info': prefs.prefs.infoOpen }" role="dialog" aria-modal="true" :aria-label="item.name">
+      <div v-if="viewer.open && item" ref="shell" class="viewer" tabindex="-1" :class="{ compact, 'with-info': prefs.prefs.infoOpen }" role="dialog" aria-modal="true" :aria-label="item.name">
         <header class="bar">
           <IconButton :icon="icons.X" :label="t('viewer.close')" @click="viewer.close()" />
           <div class="title">
@@ -665,7 +674,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .viewer {
-  position: fixed; inset: 0; z-index: var(--app-z-viewer); display: flex; flex-direction: column;
+  position: fixed; inset: 0; z-index: var(--app-z-viewer); display: flex; flex-direction: column; outline: none;
   background: color-mix(in srgb, var(--md-sys-color-scrim) 94%, var(--md-sys-color-surface)); color: var(--app-color-on-scrim);
   --md-icon-button-icon-color: var(--app-color-on-scrim);
   --md-icon-button-hover-icon-color: var(--app-color-on-scrim);

@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import IconButton from '@/ui/IconButton.vue';
 import { X } from '@/ui/icons';
-import { useLayer } from '@/ui/useLayer';
+import { closeOnEscape, useLayer } from '@/ui/useLayer';
 
 /** A modal side sheet that slides in from the right edge (the ``sheet`` transition). */
 withDefaults(defineProps<{ title: string; closeLabel?: string }>(), { closeLabel: 'Close' });
 const open = defineModel<boolean>('open', { default: false });
-useLayer(() => open.value, () => (open.value = false));
+useLayer(
+  () => open.value,
+  closeOnEscape(() => (open.value = false)),
+);
 </script>
 
 <template>

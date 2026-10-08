@@ -1,7 +1,7 @@
 """``create_app(services)``: the FastAPI app with routers, the socket, and the web UI."""
 
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -54,7 +54,7 @@ def create_app(
     socket_bridge = SocketBridge(services.events, lambda: services.settings.settings.server.access_token)
 
     @asynccontextmanager
-    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         await socket_bridge.start()
         if start_scanner:
             services.index.start(scan_on_start)

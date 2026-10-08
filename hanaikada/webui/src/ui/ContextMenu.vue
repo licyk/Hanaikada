@@ -16,8 +16,6 @@ const emit = defineEmits<{ select: [string] }>();
 const list = ref<HTMLElement | null>(null);
 const position = ref<Record<string, string>>({});
 const MARGIN = 8;
-// Escape closes the menu alone, not the viewer or dialog it opened from.
-const layer = useLayer(() => open.value, () => (open.value = false));
 
 function place() {
   const menu = list.value?.getBoundingClientRect();
@@ -31,14 +29,19 @@ function place() {
 const onDoc = (e: Event) => {
   if (!list.value?.contains(e.target as Node)) open.value = false;
 };
+// A layer, so Escape closes the menu alone, not the viewer or dialog it opened from.
 const onKey = (e: KeyboardEvent) => {
-  if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && layer.isTop()) {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    open.value = false;
+  } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
     const items = [...(list.value?.querySelectorAll<HTMLButtonElement>('button:not([disabled])') ?? [])];
     const i = items.indexOf(document.activeElement as HTMLButtonElement);
     items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus();
     e.preventDefault();
   }
 };
+useLayer(() => open.value, onKey);
 const close = () => (open.value = false);
 // Scroll events are listened to in the capture phase, so the menu's own list scrolling arrives here too.
 const onScroll = (e: Event) => {
@@ -48,13 +51,11 @@ const onScroll = (e: Event) => {
 function listen(on: boolean) {
   if (on) {
     document.addEventListener('pointerdown', onDoc, true);
-    document.addEventListener('keydown', onKey, true);
     window.addEventListener('scroll', onScroll, true);
     window.addEventListener('resize', close);
     window.addEventListener('blur', close);
   } else {
     document.removeEventListener('pointerdown', onDoc, true);
-    document.removeEventListener('keydown', onKey, true);
     window.removeEventListener('scroll', onScroll, true);
     window.removeEventListener('resize', close);
     window.removeEventListener('blur', close);

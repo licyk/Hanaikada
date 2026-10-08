@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { fileUrl } from '@/api/client';
 import { useImageByPath } from '@/api/queries/images';
 import { useI18n } from '@/i18n';
 import { changedFields, diffPrompts } from '@/metadata/infotext';
 import { useDialogsStore } from '@/stores/dialogs';
-import { Chip, IconButton, icons, useLayer } from '@/ui';
+import { Chip, IconButton, icons, trapFocus, useLayer } from '@/ui';
 
 /**
  * Two images one over the other with a divider to drag across, and what differs between them:
@@ -40,14 +40,39 @@ function stop() {
   window.removeEventListener('pointermove', drag);
   window.removeEventListener('pointerup', stop);
 }
-useLayer(() => !!pair.value, () => (dialogs.compare = null));
+
+// A layer that takes focus while open, so the viewer or grid beneath sees none of its keys.
+const shell = ref<HTMLElement | null>(null);
+let previousFocus: HTMLElement | null = null;
+useLayer(
+  () => !!pair.value,
+  (event) => {
+    trapFocus(event, shell.value);
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    dialogs.compare = null;
+  },
+);
+watch(
+  () => !!pair.value,
+  async (open) => {
+    if (!open) {
+      previousFocus?.focus?.();
+      previousFocus = null;
+      return;
+    }
+    previousFocus = document.activeElement as HTMLElement | null;
+    await nextTick();
+    shell.value?.focus();
+  },
+);
 onBeforeUnmount(stop);
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="scrim">
-      <div v-if="left && right" class="compare" role="dialog" aria-modal="true" :aria-label="t('selection.compare')">
+      <div v-if="left && right" ref="shell" class="compare" tabindex="-1" role="dialog" aria-modal="true" :aria-label="t('selection.compare')">
         <header class="bar">
           <IconButton :icon="icons.X" :label="t('common.close')" @click="dialogs.compare = null" />
           <span class="type-title-medium name">{{ left.name }}</span>
@@ -72,7 +97,7 @@ onBeforeUnmount(stop);
 
 <style scoped>
 .compare {
-  position: fixed; inset: 0; z-index: var(--app-z-compare); display: flex; flex-direction: column;
+  position: fixed; inset: 0; z-index: var(--app-z-compare); display: flex; flex-direction: column; outline: none;
   background: color-mix(in srgb, var(--md-sys-color-scrim) 94%, var(--md-sys-color-surface)); color: var(--app-color-on-scrim);
   --md-icon-button-icon-color: var(--app-color-on-scrim);
   --md-icon-button-hover-icon-color: var(--app-color-on-scrim);

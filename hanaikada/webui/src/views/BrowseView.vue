@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onActivated, onBeforeUnmount, onDeactivated, reactive, ref, watch } from 'vue';
+import { computed, onActivated, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ApiError } from '@/api/client';
 import { useSettings } from '@/api/queries/app';
@@ -24,7 +24,7 @@ import { useSelection } from '@/stores/selection';
 import { useUploadsStore } from '@/stores/uploads';
 import { useViewerStore } from '@/stores/viewer';
 import { useWindowClass } from '@/theme/breakpoints';
-import { AppButton, AppMenu, Breadcrumbs, Chip, ContextMenu, EmptyState, IconButton, SelectField, Skeleton, icons, layerOpen, type MenuItem, TRANSITIONS, useElementHeight, useKeepScroll, useSnackbar } from '@/ui';
+import { AppButton, AppMenu, Breadcrumbs, Chip, ContextMenu, EmptyState, IconButton, SelectField, Skeleton, icons, closeOnEscape, type MenuItem, TRANSITIONS, useElementHeight, useKeepScroll, useLayer, useSnackbar } from '@/ui';
 
 const { t, platformLabel } = useI18n();
 const route = useRoute();
@@ -232,16 +232,16 @@ useKeepScroll(side);
 
 // Narrower than a desktop, the folder panel is a drawer over the grid. It opens below the toolbar,
 // which stays usable (its button closes the drawer again, however many rows the toolbar wraps
-// onto); a tap on the grid beside it or Escape closes it too, unless a dialog or menu over it takes the Escape.
+// onto); a tap on the grid beside it or Escape closes it too. It is a layer, so Escape in a dialog or
+// menu over it closes only that; hidden behind another page (kept alive), it holds no keys.
 const toolbar = ref<HTMLElement | null>(null);
 const toolbarHeight = useElementHeight(toolbar);
 const drawerOpen = computed(() => !wide.value && treeOpen.value);
 const belowToolbar = computed(() => ({ top: `${toolbarHeight.value}px` }));
-const onDrawerKey = (event: KeyboardEvent) => event.key === 'Escape' && !event.defaultPrevented && !layerOpen() && (treeOpen.value = false);
-watch(drawerOpen, (open) => (open ? document.addEventListener('keydown', onDrawerKey) : document.removeEventListener('keydown', onDrawerKey)));
-onActivated(() => drawerOpen.value && document.addEventListener('keydown', onDrawerKey));
-onDeactivated(() => document.removeEventListener('keydown', onDrawerKey));
-onBeforeUnmount(() => document.removeEventListener('keydown', onDrawerKey));
+useLayer(
+  () => drawerOpen.value && shown(),
+  closeOnEscape(() => (treeOpen.value = false)),
+);
 function openImage(item: ImageItem) {
   viewer.show({ items: () => items.value, hasMore: () => hasMore.value, loadMore }, item.key);
 }

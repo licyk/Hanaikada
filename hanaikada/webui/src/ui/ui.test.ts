@@ -1,10 +1,11 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
-import { defineComponent, nextTick, ref } from 'vue';
+import { defineComponent, h, nextTick, ref } from 'vue';
 import { formatBytes, parentPath, pathSegments } from '@/format';
 import { translate, translateList } from '@/i18n';
 import { windowClass } from '@/theme/breakpoints';
 import { DEFAULT_SOURCE_COLOR, generateScheme } from '@/theme/scheme';
+import AppDialog from '@/ui/AppDialog.vue';
 import Breadcrumbs from '@/ui/Breadcrumbs.vue';
 import Chip from '@/ui/Chip.vue';
 import EmptyState from '@/ui/EmptyState.vue';
@@ -12,7 +13,7 @@ import ExpansionPanel from '@/ui/ExpansionPanel.vue';
 import SegmentedButton from '@/ui/SegmentedButton.vue';
 import { Blossom } from '@/ui/icons';
 import { containerFrom, staggerStyle } from '@/ui/motion/transitions';
-import { layerOpen, useLayer } from '@/ui/useLayer';
+import { closeOnEscape, layerOpen, trapFocus, useLayer } from '@/ui/useLayer';
 import { useSnackbar } from '@/ui/useSnackbar';
 
 describe('ui components', () => {
@@ -76,11 +77,15 @@ describe('ui components', () => {
 });
 
 describe('layers', () => {
-  const escape = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }));
+  const press = (key: string, init: KeyboardEventInit = {}) => document.dispatchEvent(new KeyboardEvent('keydown', { key, cancelable: true, ...init }));
+  const escape = () => press('Escape');
   const Layer = defineComponent({
     setup(_, { expose }) {
       const open = ref(true);
-      const { isTop } = useLayer(() => open.value, () => (open.value = false));
+      const { isTop } = useLayer(
+        () => open.value,
+        closeOnEscape(() => (open.value = false)),
+      );
       expose({ open, isTop });
       return () => null;
     },
@@ -109,6 +114,107 @@ describe('layers', () => {
     expect(layerOpen()).toBe(true);
     wrapper.unmount();
     expect(layerOpen()).toBe(false);
+  });
+
+  /** A layer recording the keys it is handed, open while ``active`` holds. */
+  const probe = (active = ref(true)) => {
+    const seen: string[] = [];
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          useLayer(
+            () => active.value,
+            (e) => seen.push(e.key),
+          );
+          return () => null;
+        },
+      }),
+    );
+    return { seen, wrapper, active };
+  };
+
+  it('hands every key to the topmost layer alone', () => {
+    const under = probe();
+    const over = probe();
+    press('ArrowRight');
+    over.active.value = false;
+    press('Delete');
+    expect(over.seen).toEqual(['ArrowRight']);
+    expect(under.seen).toEqual(['Delete']);
+    under.wrapper.unmount();
+    over.wrapper.unmount();
+  });
+
+  it('puts a layer back on top when it opens again, and forgets it once closed or gone', () => {
+    const first = probe();
+    const second = probe();
+    first.active.value = false;
+    first.active.value = true;
+    press('a');
+    first.active.value = false;
+    first.wrapper.unmount();
+    press('b');
+    second.wrapper.unmount();
+    press('c');
+    expect(first.seen).toEqual(['a']);
+    expect(second.seen).toEqual(['b']);
+    expect(layerOpen()).toBe(false);
+  });
+
+  it('leaves a key that a control inside the layer already claimed', () => {
+    const { seen, wrapper } = probe();
+    const event = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true });
+    event.preventDefault();
+    document.dispatchEvent(event);
+    expect(seen).toEqual([]);
+    wrapper.unmount();
+  });
+
+  it('keeps Tab cycling inside a container and brings stray focus back in', () => {
+    const outside = document.createElement('button');
+    const box = document.createElement('div');
+    box.innerHTML = '<button id="a"></button><button disabled></button><input id="b" />';
+    document.body.append(outside, box);
+    const tab = (shiftKey = false) => {
+      const event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey, cancelable: true });
+      trapFocus(event, box);
+      return event.defaultPrevented;
+    };
+    box.querySelector<HTMLElement>('#b')!.focus();
+    expect(tab()).toBe(true);
+    expect(document.activeElement?.id).toBe('a');
+    expect(tab(true)).toBe(true);
+    expect(document.activeElement?.id).toBe('b');
+    outside.focus();
+    tab();
+    expect(document.activeElement?.id).toBe('a');
+    outside.remove();
+    box.remove();
+  });
+
+  it('closes one of two stacked dialogs per Escape, the newer first', async () => {
+    // Material's buttons need ElementInternals, which happy-dom lacks.
+    const global = { stubs: { IconButton: { props: ['label'], template: '<button type="button" :aria-label="label" />' } } };
+    const outer = ref(true);
+    const inner = ref(false);
+    const wrapper = mount(
+      defineComponent({
+        setup: () => () => [
+          h(AppDialog, { open: outer.value, 'onUpdate:open': (v: boolean) => (outer.value = v), title: 'Outer' }, () => 'outer'),
+          h(AppDialog, { open: inner.value, 'onUpdate:open': (v: boolean) => (inner.value = v), title: 'Inner' }, () => 'inner'),
+        ],
+      }),
+      { attachTo: document.body, global },
+    );
+    inner.value = true;
+    await nextTick();
+    escape();
+    await nextTick();
+    expect([outer.value, inner.value]).toEqual([true, false]);
+    escape();
+    await nextTick();
+    expect(outer.value).toBe(false);
+    wrapper.unmount();
   });
 });
 
