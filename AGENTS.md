@@ -62,7 +62,11 @@ python scripts/extract_metadata_fixture.py <image> <fixture.png|.jpg|.webp|.gif>
 - **API change → `typegen`** and commit `webui/src/api/schema.d.ts`; `check` fails until it matches git.
 - **Packaging:** nothing in the build backend builds the UI, so a bare `python -m build` ships a
   wheel without it; use `scripts/build_wheel.py` (`--ci` only bundles; `--keep-web-dist`).
-  `release.yml` runs on a `master` push changing `hanaikada/version.py`, a `v*` tag, or by hand.
+  `release.yml` runs on a `main` push changing `hanaikada/version.py`, a `v*` tag, or by hand.
+- **CI** is `ci.yml` (push to `main`, pull requests, by hand); `release.yml` calls it as its checks
+  (`workflow_call`) before building. Its `gate` job skips CI's own run of a `main` push that changes
+  `hanaikada/version.py`, since Release checks that push; inside the call `github.workflow` is
+  "Release", so the gate passes there.
 - **A CLI command** is a plain function in `cli/commands/`, registered with name and help in
   `cli/app.py:get_app()` and added to `EXPECTED_TREE` in `tests/cli/test_cli.py`. Groups come from
   `typer_factory()` (eager `--debug` everywhere, alphabetical help). Import heavy modules inside
