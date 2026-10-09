@@ -48,8 +48,9 @@ const nav = computed<NavItem[]>(() => [
   { to: addressOf('search'), label: t('nav.search'), icon: icons.Search },
   { to: addressOf('tags'), label: t('nav.tags'), icon: icons.Tags },
   { to: addressOf('stats'), label: t('nav.stats'), icon: icons.BarChart3 },
-  { to: addressOf('settings'), label: t('nav.settings'), icon: icons.Settings },
 ]);
+// Settings sits at the foot of the rail, in the bottom corner whatever the window's height (last in the bottom bar).
+const footer = computed<NavItem[]>(() => [{ to: addressOf('settings'), label: t('nav.settings'), icon: icons.Settings }]);
 
 // Pages are kept alive (KeepAlive below) so each keeps its state while another is shown, in memory
 // only. The shell's scroller is shared, so each page's offset in it is kept here and put back.
@@ -67,7 +68,7 @@ const activityLabel = computed(() => (scan.active.length ? `${t('scan.scanning')
 </script>
 
 <template>
-  <AppShell ref="shell" :items="nav" :title="t('app.title')">
+  <AppShell ref="shell" :items="nav" :footer="footer" :title="t('app.title')">
     <template #rail-top>
       <IconButton :icon="icons.Blossom" :label="t('app.title')" tonal />
     </template>

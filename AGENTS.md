@@ -338,7 +338,9 @@ generated `schema.d.ts`, socket.io-client, `@material/web` wrapped in `ui/`, Luc
   is left alone. Full-screen layers take focus while open and give it back. A kept-alive page
   gives up its layer while hidden. No hand-kept list of which dialogs are open.
 - **Layout and motion:** window classes 600/840/1200/1600 (`theme/breakpoints.ts`); a bottom bar
-  when compact, a rail otherwise. Motion only through `ui/motion/` (`TRANSITIONS`): fade-through
+  when compact, a rail otherwise (rvc-next's: Settings is the shell's `footer`, last in the bar
+  and at the foot of the rail; only the rail's destinations scroll when the window is too short,
+  so Settings stays in the bottom-left corner). Motion only through `ui/motion/` (`TRANSITIONS`): fade-through
   between pages, shared-axis-x for tab content and Browse's folder changes (`--axis-dir` on a
   positioned, x-clipped parent; Browse keys it on the folder whose listing is shown, not the one
   still loading, and moves focus to the new grid), drawer, `pane` (a side pane pushing the
