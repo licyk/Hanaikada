@@ -25,6 +25,8 @@ classifiers = [
 ]
 dependencies = [
     "fastapi",
+    # Imported directly (static files, middleware, ASGI types), not only through FastAPI.
+    "starlette",
     "uvicorn",
     # uvicorn speaks WebSocket only when this is installed; without it the socket falls back to
     # long polling. No version bound: 11 works (the SD WebUI's Gradio 3 needs <12).
