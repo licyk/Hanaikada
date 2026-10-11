@@ -64,6 +64,7 @@ include = ["hanaikada*"]
 version = { attr = "hanaikada.version.VERSION" }
 
 [tool.ruff]
+include = ["hanaikada/**/*.{py,pyi,ipynb}", "tests/**/*.{py,pyi,ipynb}", "scripts/**/*.{py,pyi,ipynb}"]
 line-length = 180
 indent-width = 4
 extend-exclude = ["hanaikada/webui/dist", "hanaikada/webui/node_modules"]
