@@ -126,11 +126,8 @@ const show = (tag: Tag) => router.push({ name: 'search', query: { q: encodeQuery
   background: var(--md-sys-color-surface-container-low); border-radius: var(--md-sys-shape-corner-large) var(--md-sys-shape-corner-large) 0 0;
   border-bottom: 1px solid var(--md-sys-color-outline-variant);
 }
-.tabs {
-  overflow-x: auto; padding: 0 var(--app-space-2); border-radius: inherit;
-  --md-primary-tab-container-color: transparent; --md-divider-color: transparent;
-}
-.tabs :deep(md-primary-tab) { border-radius: var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) 0 0; }
+/* The rounded tab bar, inset in line with the toolbar under it. */
+.tabs { padding: var(--app-space-3) var(--app-space-4) 0; }
 .toolbar { display: flex; gap: var(--app-space-3); align-items: center; flex-wrap: wrap; padding: var(--app-space-2) var(--app-space-4) var(--app-space-3); }
 .filter { flex: 1; min-width: 200px; }
 .list { list-style: none; margin: 0; padding: 0 var(--app-space-4); display: flex; flex-direction: column; gap: var(--app-space-1); }

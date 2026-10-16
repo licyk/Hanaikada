@@ -4,7 +4,7 @@ import { useCustomTags, useTagMutations } from '@/api/queries/tags';
 import type { Tag } from '@/api/types';
 import { useI18n } from '@/i18n';
 import { useDialogsStore } from '@/stores/dialogs';
-import { AppButton, AppDialog, Chip, TextField, icons, useSnackbar } from '@/ui';
+import { AppButton, AppDialog, Chip, FieldRow, TextField, icons, useSnackbar } from '@/ui';
 
 /**
  * Custom tags for one or more images. A tag every image has is selected; clicking it removes it
@@ -83,10 +83,12 @@ async function create() {
           @click="toggle(tag)"
         />
       </div>
-      <div class="new">
+      <FieldRow>
         <TextField v-model="newName" :label="t('tags.newName')" @enter="create" />
-        <AppButton variant="tonal" :icon="icons.Plus" :disabled="!newName.trim()" @click="create">{{ t('common.add') }}</AppButton>
-      </div>
+        <template #end>
+          <AppButton variant="tonal" :icon="icons.Plus" :disabled="!newName.trim()" @click="create">{{ t('common.add') }}</AppButton>
+        </template>
+      </FieldRow>
     </div>
     <template #actions>
       <AppButton variant="text" @click="open = false">{{ t('common.close') }}</AppButton>
@@ -97,6 +99,4 @@ async function create() {
 <style scoped>
 .picker { display: flex; flex-direction: column; gap: var(--app-space-3); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--app-space-2); }
-.new { display: flex; align-items: flex-start; gap: var(--app-space-2); }
-.new > :first-child { flex: 1; min-width: 0; }
 </style>

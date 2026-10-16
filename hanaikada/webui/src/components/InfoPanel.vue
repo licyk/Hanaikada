@@ -147,7 +147,7 @@ const setOpen = (key: string, value: boolean) => (opened.value = new Map(opened.
     </div>
   </section>
   <section v-else class="info-panel">
-    <Tabs v-model="prefs.prefs.infoTab" :tabs="tabs" />
+    <div class="tabs"><Tabs v-model="prefs.prefs.infoTab" :tabs="tabs" /></div>
     <div class="body">
       <div v-if="detail.isLoading.value" class="loading"><ProgressCircle :size="32" /><span class="muted type-body-medium">{{ t('info.notIndexed') }}</span></div>
       <p v-else-if="detail.error.value" class="error type-body-medium">{{ (detail.error.value as Error).message }}</p>
@@ -269,6 +269,8 @@ const setOpen = (key: string, value: boolean) => (opened.value = new Map(opened.
 
 <style scoped>
 .info-panel { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+/* The rounded tab bar, inset in line with the body's padding. */
+.tabs { flex: none; padding: var(--app-space-3) var(--app-space-4) 0; }
 .body { flex: 1; min-height: 0; overflow-y: auto; padding: var(--app-space-3) var(--app-space-4) var(--app-space-6); }
 /* Clipped sideways so a tab sliding in or out never shows a horizontal scrollbar. */
 .stage { position: relative; overflow-x: clip; }

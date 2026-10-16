@@ -327,7 +327,10 @@ generated `schema.d.ts`, socket.io-client, `@material/web` wrapped in `ui/`, Luc
   colours, radii or durations.
 - **Components:** targets ≥ 48 px; views never restyle a `ui/` component (add a variant there);
   `@material/web` is in maintenance mode, so a broken one is replaced inside `ui/`. `ui/Tabs.vue`
-  re-sets the active tab after mount (`md-tabs` re-picks it). Charts are plain SVG.
+  re-sets the active tab after mount (`md-tabs` re-picks it) and is a rounded bar (Kodama's). A field
+  with buttons beside it is a `ui/FieldRow`: the buttons centre on the field's box
+  (`--app-field-height`), not on its supporting text. Text fields and selects keep their own height
+  (`height: fit-content`), so fields side by side in a stretching grid stay aligned. Charts are plain SVG.
 - **Layers:** stacking comes only from the `--app-z-*` tokens (sheet < viewer < compare < dialog <
   snackbar < menu: dialogs open from the viewer, so they sit above it). Everything modal — dialogs,
   sheets, menus, the viewer, the compare view, Browse's drawer — registers with

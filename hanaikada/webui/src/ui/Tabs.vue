@@ -33,6 +33,18 @@ watch(index, sync);
 </template>
 
 <style scoped>
+/* A rounded bar, as wide as its row, on the same container tone as the app's other controls; its
+   divider is dropped (the rounded box is the edge) and the indicator is a rounded pill. */
+md-tabs {
+  border-radius: var(--md-sys-shape-corner-large);
+  overflow: hidden;
+  background: var(--md-sys-color-surface-container);
+  --md-divider-color: transparent;
+  --md-primary-tab-container-color: transparent;
+  --md-primary-tab-container-shape: var(--md-sys-shape-corner-large);
+  --md-primary-tab-active-indicator-shape: var(--md-sys-shape-corner-full);
+  --md-primary-tab-active-indicator-height: 3px;
+}
 /* md-primary-tab colours its label on the host, so the change between tabs can be eased here;
    the indicator's own slide is md-tabs'. */
 md-primary-tab { transition: color var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard); }

@@ -38,3 +38,20 @@ describe('rows that hold a file name', () => {
     expect(rule(file, selector)).toContain('min-width: 0');
   });
 });
+
+/** A field with its buttons beside it: the buttons centre on the field's box, not on the box and the text under it. */
+describe('field rows', () => {
+  it('FieldRow centres its end on the field box alone', () => {
+    expect(rule('ui/FieldRow.vue', '.field-row')).toContain('align-items: flex-start');
+    const end = rule('ui/FieldRow.vue', '.end');
+    expect(end).toContain('align-items: center');
+    expect(end).toContain('min-height: var(--app-field-height)');
+  });
+  it.each(['ui/TokenField.vue', 'components/TagPickerDialog.vue'])('%s puts its field and buttons in a FieldRow', (file) => {
+    expect(readFileSync(join(SRC, file), 'utf8')).toContain('<FieldRow');
+  });
+  // Fields side by side in a stretching grid keep their own boxes (Settings › Index, Server).
+  it.each([['ui/TextField.vue', '.text-field'], ['ui/SelectField.vue', '.select']] as const)('%s keeps its own height', (file, selector) => {
+    expect(rule(file, selector)).toContain('height: fit-content');
+  });
+});

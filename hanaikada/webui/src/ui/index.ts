@@ -24,6 +24,7 @@ export { default as Divider } from '@/ui/Divider.vue';
 export { default as EmptyState } from '@/ui/EmptyState.vue';
 export { default as ExpansionPanel } from '@/ui/ExpansionPanel.vue';
 export { default as Fab } from '@/ui/Fab.vue';
+export { default as FieldRow } from '@/ui/FieldRow.vue';
 export { default as FilterChip } from '@/ui/FilterChip.vue';
 export { default as Heatmap } from '@/ui/Heatmap.vue';
 export { default as IconButton } from '@/ui/IconButton.vue';

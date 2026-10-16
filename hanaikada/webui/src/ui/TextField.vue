@@ -53,6 +53,9 @@ function onInput(event: Event) {
 <style scoped>
 .text-field {
   width: 100%;
+  /* Its own height, even in a stretching grid or row: a neighbour's supporting text must not make
+     this field's box taller, so fields side by side keep their boxes aligned. */
+  height: fit-content;
   /* An example, not a value: the outline tone keeps it well apart from typed text (on-surface). */
   --md-outlined-text-field-input-text-placeholder-color: var(--md-sys-color-outline);
 }

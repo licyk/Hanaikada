@@ -60,6 +60,8 @@
   --md-sys-state-dragged-state-layer-opacity: 0.16;
   --app-disabled-content-opacity: 0.38;
   --app-disabled-container-opacity: 0.12;
+  /* The box of an outlined text field or select (without its supporting text). */
+  --app-field-height: 56px;
 
   /* Widths that grow with the window instead of stopping at a fixed size. Each is a floor for a
      small window, a share of the viewport, and a ceiling where a wider line stops being readable. */
