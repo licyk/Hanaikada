@@ -10,7 +10,7 @@ export type Locale = 'en' | 'zh-CN' | 'ja';
 export type LocalePreference = Locale | 'auto';
 const LOCALE_PREFERENCES: LocalePreference[] = ['auto', 'en', 'zh-CN', 'ja'];
 export type InfoTab = 'parameters' | 'prompt' | 'raw' | 'info';
-export type ShortcutAction = 'favorite' | 'delete' | 'download' | 'copyPrompt' | 'toggleInfo' | 'next' | 'previous' | 'slideshow';
+export type ShortcutAction = 'favorite' | 'delete' | 'download' | 'copyPrompt' | 'toggleInfo' | 'next' | 'previous' | 'slideshow' | 'immersive';
 
 export const DEFAULT_SHORTCUTS: Record<ShortcutAction, string> = {
   favorite: 'f',
@@ -21,6 +21,7 @@ export const DEFAULT_SHORTCUTS: Record<ShortcutAction, string> = {
   next: 'ArrowRight',
   previous: 'ArrowLeft',
   slideshow: 's',
+  immersive: 'h',
 };
 
 export interface Preferences {

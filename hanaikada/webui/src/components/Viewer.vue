@@ -16,7 +16,8 @@ import { AppButton, AppIcon, AppMenu, ContextMenu, IconButton, ProgressCircle, c
 /**
  * The full-screen viewer over whichever list opened it. ← → walk that list and fetch its next page
  * at the end; the wheel, a pinch or a double-click zooms, dragging pans; the information panel is a
- * resizable side sheet, or a bottom sheet on a phone.
+ * resizable side sheet, or a bottom sheet on a phone. Full screen hides the bar and the panel, leaving
+ * the image, the arrows, a way out and the filmstrip.
  */
 const viewer = useViewerStore();
 const prefs = usePreferencesStore();
@@ -316,13 +317,60 @@ function run(id: ActionId) {
   actions.run(id, [entry(current)]);
 }
 
-const menuItems = computed<(MenuItem & { divider?: boolean })[]>(() => (item.value ? actions.menuFor([entry(item.value)]).filter((m) => m.id !== 'open') : []));
+const menuItems = computed<(MenuItem & { divider?: boolean })[]>(() => {
+  if (!item.value) return [];
+  const own = immersive.value ? { id: 'immersive', label: t('viewer.exitImmersive'), icon: icons.Minimize } : { id: 'immersive', label: t('viewer.immersive'), icon: icons.Maximize };
+  return [own, ...actions.menuFor([entry(item.value)]).filter((m) => m.id !== 'open')];
+});
+function select(id: string) {
+  if (id === 'immersive') immersive.value = !immersive.value;
+  else run(id as ActionId);
+}
 // What the framing application takes ("Send to txt2img", "Open workflow"); empty on its own.
 const sendItems = computed(() => (item.value ? actions.sendItems(item.value) : []));
 function openMenu(event: MouseEvent) {
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
   Object.assign(menu, { open: true, x: rect.right - 220, y: rect.bottom });
 }
+
+// -- full screen: only the image, the arrows, a way out and the filmstrip; ends with the viewer ------
+
+const immersive = ref(false);
+
+// The browser's full screen comes with it where the page may have it (a frame without
+// ``allowfullscreen`` may not, and keeps the viewer's own). Only a full screen the viewer asked for
+// is ended by it; leaving that one in the browser (its Escape, F11) leaves the viewer's too.
+let ownFullscreen = false;
+
+async function leaveFullscreen() {
+  ownFullscreen = false;
+  if (document.fullscreenElement) await document.exitFullscreen().catch(() => undefined);
+}
+
+watch(immersive, async (on) => {
+  if (!on) {
+    if (ownFullscreen) await leaveFullscreen();
+    return;
+  }
+  if (document.fullscreenElement || !document.fullscreenEnabled) return;
+  try {
+    // The whole document, not the viewer: dialogs and menus opened from it are teleported beside it.
+    await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+  } catch {
+    return;
+  }
+  ownFullscreen = true;
+  // Left again while the browser was still switching.
+  if (!immersive.value) await leaveFullscreen();
+});
+
+function onFullscreenChange() {
+  if (document.fullscreenElement || !ownFullscreen) return;
+  ownFullscreen = false;
+  immersive.value = false;
+}
+document.addEventListener('fullscreenchange', onFullscreenChange);
+onBeforeUnmount(() => document.removeEventListener('fullscreenchange', onFullscreenChange));
 
 // -- slideshow --------------------------------------------------------------------------------------
 
@@ -347,9 +395,10 @@ let previousFocus: HTMLElement | null = null;
 function onKey(event: KeyboardEvent) {
   trapFocus(event, shell.value);
   if (event.key === 'Escape') {
-    // Stops the slideshow, then closes.
+    // Stops the slideshow, then leaves full screen, then closes.
     event.preventDefault();
     if (playing.value) playing.value = false;
+    else if (immersive.value) immersive.value = false;
     else viewer.close();
     return;
   }
@@ -364,7 +413,12 @@ function onKey(event: KeyboardEvent) {
     step(-1);
     handled();
   } else if (matches('toggleInfo', event)) {
-    prefs.prefs.infoOpen = !prefs.prefs.infoOpen;
+    // Full screen has no panel: asking for it leaves full screen with the panel open.
+    prefs.prefs.infoOpen = immersive.value || !prefs.prefs.infoOpen;
+    immersive.value = false;
+    handled();
+  } else if (matches('immersive', event)) {
+    immersive.value = !immersive.value;
     handled();
   } else if (matches('favorite', event)) {
     run(favorite.value ? 'unfavorite' : 'favorite');
@@ -416,6 +470,7 @@ watch(
       previousFocus?.focus?.();
       previousFocus = null;
       playing.value = false;
+      immersive.value = false;
       generation++;
       settle?.();
       pendingDir = null;
@@ -562,8 +617,8 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <Transition name="scrim">
-      <div v-if="viewer.open && item" ref="shell" class="viewer" tabindex="-1" :class="{ compact, 'with-info': prefs.prefs.infoOpen }" role="dialog" aria-modal="true" :aria-label="item.name">
-        <header class="bar">
+      <div v-if="viewer.open && item" ref="shell" class="viewer" tabindex="-1" :class="{ compact, immersive, 'with-info': prefs.prefs.infoOpen && !immersive }" role="dialog" aria-modal="true" :aria-label="item.name">
+        <header v-if="!immersive" class="bar">
           <IconButton :icon="icons.X" :label="t('viewer.close')" @click="viewer.close()" />
           <div class="title">
             <span class="type-title-medium name">{{ item.name }}</span>
@@ -583,6 +638,7 @@ onBeforeUnmount(() => {
           </AppMenu>
           <IconButton v-if="!compact" :icon="icons.Download" :label="t('common.download')" @click="run('download')" />
           <IconButton v-if="!compact" :icon="icons.Trash2" :label="t('common.delete')" @click="run('delete')" />
+          <IconButton v-if="!compact" :icon="icons.Maximize" :label="t('viewer.immersive')" @click="immersive = true" />
           <IconButton :icon="icons.Info" :label="t('viewer.info')" :tonal="prefs.prefs.infoOpen" @click="prefs.prefs.infoOpen = !prefs.prefs.infoOpen" />
           <IconButton :icon="icons.MoreVertical" :label="t('common.more')" @click="openMenu" />
         </header>
@@ -627,23 +683,27 @@ onBeforeUnmount(() => {
             <button v-if="viewer.index < viewer.items.length - 1 || viewer.source?.hasMore?.()" type="button" class="nav next" :aria-label="t('viewer.next')" @click.stop="step(1)" @pointerdown.stop>
               <AppIcon :icon="icons.ChevronRight" />
             </button>
+            <span v-if="immersive" class="exit" @pointerdown.stop @dblclick.stop>
+              <IconButton :icon="icons.Minimize" :label="t('viewer.exitImmersive')" @click="immersive = false" />
+            </span>
           </div>
 
           <Transition name="sheet">
-            <aside v-if="prefs.prefs.infoOpen" class="info" :style="compact ? undefined : { width: `${prefs.prefs.infoWidth}px` }">
+            <aside v-if="prefs.prefs.infoOpen && !immersive" class="info" :style="compact ? undefined : { width: `${prefs.prefs.infoWidth}px` }">
               <div v-if="!compact" class="resize" role="separator" aria-orientation="vertical" @pointerdown.prevent="startResize" />
               <InfoPanel :item="item" :previous="viewer.previousItem" />
             </aside>
           </Transition>
         </div>
 
-        <div v-if="!compact" class="filmstrip">
-          <IconButton
-            class="strip-toggle"
-            :icon="prefs.prefs.filmstripOpen ? icons.ChevronDown : icons.ChevronUp"
-            :label="prefs.prefs.filmstripOpen ? t('viewer.hideFilmstrip') : t('viewer.showFilmstrip')"
-            @click="prefs.prefs.filmstripOpen = !prefs.prefs.filmstripOpen"
-          />
+        <div v-if="!compact" class="filmstrip" :class="{ folded: !prefs.prefs.filmstripOpen }">
+          <span class="strip-toggle">
+            <IconButton
+              :icon="prefs.prefs.filmstripOpen ? icons.ChevronDown : icons.ChevronUp"
+              :label="prefs.prefs.filmstripOpen ? t('viewer.hideFilmstrip') : t('viewer.showFilmstrip')"
+              @click="prefs.prefs.filmstripOpen = !prefs.prefs.filmstripOpen"
+            />
+          </span>
           <Transition name="collapse" v-bind="collapseHooks">
             <nav v-if="prefs.prefs.filmstripOpen" ref="stripEl" class="strip" :aria-label="t('viewer.filmstrip')" @scroll.passive="onStripScroll" @wheel="onStripWheel">
               <div class="track" :style="{ width: `${trackWidth}px` }">
@@ -666,7 +726,7 @@ onBeforeUnmount(() => {
             </nav>
           </Transition>
         </div>
-        <ContextMenu v-model:open="menu.open" :items="menuItems" :x="menu.x" :y="menu.y" @select="run($event as ActionId)" />
+        <ContextMenu v-model:open="menu.open" :items="menuItems" :x="menu.x" :y="menu.y" @select="select" />
       </div>
     </Transition>
   </Teleport>
@@ -730,6 +790,13 @@ onBeforeUnmount(() => {
   opacity: 0; transition: opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
 }
 .stage:hover .nav, .nav:focus-visible { opacity: 1; }
+/* Full screen's way out, top right, showing with the arrows. */
+.exit {
+  position: absolute; top: var(--app-space-2); right: var(--app-space-2); display: inline-flex; border-radius: var(--md-sys-shape-corner-full);
+  background: color-mix(in srgb, var(--md-sys-color-scrim) 40%, transparent);
+  opacity: 0; transition: opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+}
+.stage:hover .exit, .exit:focus-within { opacity: 1; }
 .prev { left: 0; border-radius: 0 var(--md-sys-shape-corner-large) var(--md-sys-shape-corner-large) 0; }
 .next { right: 0; border-radius: var(--md-sys-shape-corner-large) 0 0 var(--md-sys-shape-corner-large); }
 .info {
@@ -746,13 +813,18 @@ onBeforeUnmount(() => {
 }
 .resize { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 1; }
 .resize:hover { background: color-mix(in srgb, var(--md-sys-color-primary) 30%, transparent); }
-/* The toggle stays when the strip folds away, so the row keeps the header's height. */
-.filmstrip { flex: none; display: flex; align-items: center; min-height: 56px; padding-inline-start: var(--app-space-1); }
-.strip-toggle { flex: none; }
+/* Folded, the row takes no height at all: the toggle floats over the stage's corner, where it sits
+   when the strip is open too, so it never moves and only gains a backdrop. */
+.filmstrip { position: relative; flex: none; display: flex; }
+.strip-toggle {
+  position: absolute; left: var(--app-space-1); bottom: 12px; z-index: 1; display: inline-flex; border-radius: var(--md-sys-shape-corner-full);
+  transition: background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+}
+.folded .strip-toggle { background: color-mix(in srgb, var(--md-sys-color-scrim) 40%, transparent); }
 /* A short list sits centred (auto margins); a long one scrolls, its scrollbar below the frames. The
    track's own margins, not padding, space it: padding would stay when the strip collapses to nothing. */
 .strip {
-  flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain;
+  flex: 1; min-width: 0; margin-inline-start: 56px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain;
   scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--app-color-on-scrim) 40%, transparent) transparent;
 }
 .track { position: relative; height: 56px; margin: var(--app-space-2) auto; }
@@ -761,5 +833,6 @@ onBeforeUnmount(() => {
 .frame img, .frame video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .compact .main { flex-direction: column; }
 .compact .info { max-width: none; min-width: 0; height: 55%; border-radius: var(--md-sys-shape-corner-extra-large) var(--md-sys-shape-corner-extra-large) 0 0; padding-bottom: env(safe-area-inset-bottom); }
-.compact .nav { opacity: 1; width: 40px; height: 64px; }
+.compact .nav, .compact .exit { opacity: 1; }
+.compact .nav { width: 40px; height: 64px; }
 </style>

@@ -307,7 +307,11 @@ generated `schema.d.ts`, socket.io-client, `@material/web` wrapped in `ui/`, Luc
   mounted once in `App.vue`. The viewer walks the list it was opened from (`stores/viewer.ts`); its
   filmstrip is that whole list on one virtualised row (the wheel scrolls it sideways, eased frame
   by frame towards a target; the current frame centred), asking for the next page near its end; a
-  toggle beside it folds it away. The selection bar opens above the grid: once scrolled, the grid
+  toggle at its corner folds it to no height at all, the toggle then floating over the stage. Full
+  screen (`h`, the bar's button, the ⋮ menu on a phone) hides the bar and the info panel, leaving the
+  arrows, an exit button and the filmstrip, and asks for the browser's full screen too (refused in a
+  frame without `allowfullscreen`; leaving the browser's leaves ours); Escape leaves it before
+  closing, and closing ends it. The selection bar opens above the grid: once scrolled, the grid
   keeps its cells in place by moving its offset with its top edge (`VirtualGrid.holdPlace`), so
   only a grid at the very top slides down.
 - **Video, audio, other files:** listed but not indexed (no metadata, favourites or tags). Grid
