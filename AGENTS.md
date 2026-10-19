@@ -198,7 +198,11 @@ a seeded `favorite` custom tag.
 - **Scanner:** one thread, a priority queue (requested files first, then folders, roots,
   re-parse, thumbnails). A folder is re-listed when its mtime differs, a file re-read when
   size or mtime differs; batches of 50. Unseen rows get `missing_since`, are hidden, and go after
-  7 days. Watching polls folder mtimes every `index.watch_interval` s. The CLI never starts the
+  7 days. Rows are relative to their root, so a root given another folder or layout keeps them
+  (`repoint_root`: all marked missing and its folder rows dropped; the next scan clears each row it finds, id and
+  tags intact) — it used to delete them, custom tags included. Rows of a root id no longer configured are marked
+  missing at start-up (`hide_unconfigured_roots`), never deleted. Nothing in the data folder records a path in it:
+  it can be moved or copied as it is. Watching polls folder mtimes every `index.watch_interval` s. The CLI never starts the
   thread: it scans in the foreground or hands the scan to a running server (`server.json`);
   without a running scanner nothing is queued. `POST /index/scan` is 409 only during a full
   rebuild of the same root. `index_changed` path lists stop at 200 (`more`).
@@ -273,7 +277,9 @@ served only inside output folders** (an install root never serves `config.json`)
   text, else rebuilt from its metadata (`toInfotext`), else null (no prompt and no steps) — a host
   then sends the image alone, never stale parameters. The targets appear in every action menu and
   as the viewer's Send button; without a host nothing shows.
-- **Embedding** (`embed.py`): `HanaikadaServer(...).start()/stop()` and `ImageRoot`. Pinned
+- **Embedding** (`embed.py`): `HanaikadaServer(...).start()/stop()` and `ImageRoot`. An `ImageRoot` without `id`
+  takes one from its resolved path, so a moved folder becomes a new root; with `id`, a moved folder re-points it
+  (`_seed_roots`), keeping its rows and tags. Pinned
   settings and locked roots can't be changed anywhere (`/app/meta` reports `roots_locked`; the
   settings view lists `pinned` dotted names). `combined_view=True`/`False` pins
   `library.combined_view` (`None` leaves it to the user); the settings page shows it disabled,

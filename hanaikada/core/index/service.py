@@ -82,6 +82,17 @@ class IndexService:
         backup = settings.data_dir / TAGS_BACKUP_FILE
         if db.created and backup.is_file():
             db.set_client_state(RESTORE_KEY, True)
+        self.hide_unconfigured_roots()
+
+    def hide_unconfigured_roots(self) -> int:
+        """Mark missing the rows of root ids no longer configured (a host's root whose id came from a path that
+        moved, a root removed from ``settings.toml`` by hand): search would list them and their files answer "No
+        root". They are kept, with their tags, for when that root comes back, which a scan then clears."""
+        ids = [r.id for r in self.library.list_roots()]
+        where = f"root_id NOT IN ({', '.join('?' for _ in ids)})" if ids else "1"
+        with self._write_lock, self.db.transaction() as conn:
+            hidden = conn.execute(f"UPDATE images SET missing_since = ? WHERE missing_since IS NULL AND {where}", (now_iso(), *ids)).rowcount
+        return hidden
 
     # -- lifecycle -------------------------------------------------------------------------------
 
@@ -427,6 +438,18 @@ class IndexService:
                 conn.execute("DELETE FROM images WHERE root_id = ? AND rel_path = ?", (root_id, rel))
         self._changed(root_id, _parent(rel), removed=[rel], more=is_dir)
         self.backup_custom_tags()
+
+    def repoint_root(self, root_id: str) -> None:
+        """A root now at another folder, or with another layout. Its rows are relative to the root and carry the custom
+        tags, so they are kept: marked missing (hidden) until the next scan finds their files again, which clears the
+        mark in place and keeps each row's id and tags. Rows still missing go after the grace period, like any missing
+        file's. The folder rows go, so that scan lists every folder of the new place."""
+        stamp = now_iso()
+        with self._write_lock, self.db.transaction() as conn:
+            conn.execute("UPDATE images SET missing_since = ? WHERE root_id = ? AND missing_since IS NULL", (stamp, root_id))
+            conn.execute("DELETE FROM folders WHERE root_id = ?", (root_id,))
+        self.scanner.states.pop(root_id, None)
+        self._changed(root_id, "", more=True)
 
     def forget_root(self, root_id: str) -> None:
         with self._write_lock, self.db.transaction() as conn:

@@ -4,8 +4,9 @@
 
     server = HanaikadaServer(
         data_dir="./hanaikada-data",                            # database, thumbnails, and by default the settings
+                                                                # (a relative folder is taken from the working directory)
         settings_path="./my-app/hanaikada.toml",                # put the settings file where you like
-        image_roots=[ImageRoot("/srv/ComfyUI", layout="comfyui", name="ComfyUI")],
+        image_roots=[ImageRoot("/srv/ComfyUI", layout="comfyui", name="ComfyUI", id="comfyui")],  # an id keeps tags when the folder moves
         lock_image_roots=True,                                  # the user cannot change them
         combined_view=True,                                     # Browse offers "All folders"
         port=0,                                                 # 0: any free port
@@ -168,14 +169,24 @@ class HanaikadaServer:
         return services
 
     def _seed_roots(self, services: Services) -> None:
-        """Add the host's folders to the saved settings, keeping any the user added."""
+        """Add the host's folders to the saved settings, keeping any the user added; a host root with its own id that
+        moved is re-pointed."""
         from hanaikada.core.errors import HanaikadaError
-        from hanaikada.core.library.models import RootCreate
+        from hanaikada.core.library.models import RootCreate, RootUpdate
 
-        known = {Path(r.path).resolve() for r in services.library.list_roots()}
+        existing = {r.id: r for r in services.library.list_roots()}
+        known = {Path(r.path).resolve() for r in existing.values()}
         for root in self._roots:
             spec = root.to_settings()
             if Path(spec["path"]).resolve() in known:
+                continue
+            if root.id is not None and root.id in existing:
+                # The host's root under its own id, at another folder now: re-pointed, so its rows and tags are kept.
+                try:
+                    services.library.update_root(root.id, RootUpdate(path=spec["path"], layout=spec["layout"]))
+                    known.add(Path(spec["path"]).resolve())
+                except HanaikadaError as e:
+                    logger.warning("Could not move the image folder %s to %s: %s", root.id, spec["path"], e)
                 continue
             try:
                 services.library.add_root(RootCreate(name=spec["name"], path=spec["path"], layout=spec["layout"], index=spec["index"]), root_id=spec["id"])

@@ -66,6 +66,7 @@ def webui(
     write_runtime_file(services.settings.data_dir, host, actual_port, url)
     print(f"SERVER_READY url={url}", flush=True)
     logger.info("Hanaikada running on %s", url)
+    logger.info("Data folder: %s", services.settings.data_dir)
     if should_open:
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
     try:

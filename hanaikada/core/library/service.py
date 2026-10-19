@@ -299,7 +299,7 @@ class LibraryService:
         after = self.root(root_id)
         if self.index is not None:
             if after.path != before.path or after.layout != before.layout:
-                self.index.forget_root(root_id)
+                self.index.repoint_root(root_id)
             if after.enabled and after.index and (not (before.enabled and before.index) or after.path != before.path or after.layout != before.layout):
                 self.index.queue_root(root_id, full=False)
         return self.get_root(root_id)
