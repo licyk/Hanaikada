@@ -460,13 +460,18 @@ class LibraryService:
         _, root_path, target, rel = self.resolve(root_id, rel_path, kind="dir")
         plan = self.plan(root_id)
         folder_entries, file_entries = self._scan_folder(root_path, target, rel, plan)
+        # Folders follow the same order as files, except by size (a folder's own size says nothing
+        # about its contents), where they stay by name.
         if sort == "random":
-            rng = random.Random(random_seed or 0)
-            file_entries.sort(key=lambda e: e[0].name)
-            rng.shuffle(file_entries)
+            for entries in (file_entries, folder_entries):
+                entries.sort(key=lambda e: e[0].name)
+                random.Random(random_seed or 0).shuffle(entries)
         else:
             file_entries.sort(key=lambda e: self._sort_key(sort, e[1], e[0].name), reverse=descending)
-        folder_entries.sort(key=lambda e: e[0].name.lower())
+            if sort == "size":
+                folder_entries.sort(key=lambda e: self._sort_key("name", e[1], e[0].name))
+            else:
+                folder_entries.sort(key=lambda e: self._sort_key(sort, e[1], e[0].name), reverse=descending)
 
         offset = 0
         if cursor:

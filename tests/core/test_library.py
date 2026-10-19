@@ -1,6 +1,7 @@
 """Library operations: listings, companions, file operations that the index follows, thumbnails."""
 
 import io
+import os
 import shutil
 import threading
 import zipfile
@@ -45,7 +46,7 @@ def test_listing_shows_only_the_layouts_folders(services, scanned):
     top = services.library.list_entries(scanned, "")
     assert [f.name for f in top.folders] == ["outputs"]
     assert top.files == []
-    outputs = services.library.list_entries(scanned, "outputs")
+    outputs = services.library.list_entries(scanned, "outputs", sort="name", descending=False)
     assert [(f.name, f.label) for f in outputs.folders] == [("extras-images", "extras"), ("txt2img-images", "txt2img")]
     with pytest.raises(NotFoundError):
         services.library.list_entries(scanned, "extensions/x")
@@ -70,6 +71,26 @@ def test_listing_pages_and_sorts(services, scanned):
     shuffled = [f.name for f in services.library.list_entries(scanned, DAY, sort="random", random_seed=3).files]
     assert sorted(shuffled) == sorted(f.name for f in first.files + rest.files)
     assert shuffled == [f.name for f in services.library.list_entries(scanned, DAY, sort="random", random_seed=3).files]
+
+
+def test_listing_sorts_folders_too(services, webui_root, webui_dir):
+    base = webui_dir / "outputs/txt2img-images"
+    for i, name in enumerate(["b", "c", "a"]):
+        (base / name).mkdir()
+        os.utime(base / name, ns=(i * 10**9, i * 10**9))
+    (base / "00000-1.png").write_bytes(b"")
+
+    def names(**kwargs):
+        listing = services.library.list_entries(webui_root, "outputs/txt2img-images", **kwargs)
+        return [f.name for f in listing.folders if len(f.name) == 1]
+
+    assert names(sort="name", descending=False) == ["a", "b", "c"]
+    assert names(sort="name", descending=True) == ["c", "b", "a"]
+    assert names(sort="mtime", descending=True) == ["a", "c", "b"]
+    assert names(sort="mtime", descending=False) == ["b", "c", "a"]
+    assert names(sort="size", descending=True) == ["a", "b", "c"]
+    assert sorted(names(sort="random", random_seed=3)) == ["a", "b", "c"]
+    assert names(sort="random", random_seed=3) == names(sort="random", random_seed=3)
 
 
 def test_listing_marks_gone_files_missing(services, scanned, webui_dir):

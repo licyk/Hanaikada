@@ -223,7 +223,8 @@ served only inside output folders** (an install root never serves `config.json`)
   (`core`, `output`) takes its parent's name. A root with `index: false` is browsed, not scanned.
 - **Listings are live:** `scandir` joined with the folder's rows; a file without a current row
   comes back `indexed: false` and is queued; a row without a file is marked missing. Folder covers
-  (four newest) come from the index, else a capped scan, cached by mtime.
+  (four newest) come from the index, else a capped scan, cached by mtime. Subfolders follow the
+  chosen sort like files (by name under `size`; `random` uses the same seed).
 - **Operations** go through `safety.py` (`follow_symlinks`, default on, keeps a linked folder
   inside a root openable; otherwise escaping links are refused), never overwrite (error, numeric
   suffix or skip), carry `.txt`/`.json` sidecars (not a same-stem file that is itself an image),
