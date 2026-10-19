@@ -94,7 +94,8 @@ hanaikada
 ```
 
 A path is `<root-id>:<relative path>` or a path on disk inside a root. Every listing accepts
-`--json`, which prints the same records the API returns, and `--debug` works at every level.
+`--json`, which prints the same records the API returns, and `--debug` and `--data-dir DIR` (a data directory other
+than `HANAIKADA_DATA_DIR` or the default) work at every level.
 While the web UI's server runs, `hanaikada scan` hands the scan to it.
 
 ```bash

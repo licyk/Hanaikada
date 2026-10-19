@@ -92,7 +92,7 @@ hanaikada
 ```
 
 路径的写法是 `<root-id>:<相对路径>`，或者根目录内的磁盘路径。所有列表类命令都接受 `--json`，
-输出与 API 返回相同的记录；`--debug` 在每一级命令上都可用。网页界面的服务器运行时，
+输出与 API 返回相同的记录；`--debug` 和 `--data-dir DIR`（代替 `HANAIKADA_DATA_DIR` 或默认位置的数据目录）在每一级命令上都可用。网页界面的服务器运行时，
 `hanaikada scan` 会把扫描交给它执行。
 
 ```bash

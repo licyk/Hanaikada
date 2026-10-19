@@ -69,7 +69,8 @@ python scripts/extract_metadata_fixture.py <image> <fixture.png|.jpg|.webp|.gif>
   "Release", so the gate passes there.
 - **A CLI command** is a plain function in `cli/commands/`, registered with name and help in
   `cli/app.py:get_app()` and added to `EXPECTED_TREE` in `tests/cli/test_cli.py`. Groups come from
-  `typer_factory()` (eager `--debug` everywhere, alphabetical help). Import heavy modules inside
+  `typer_factory()` (eager `--debug` and `--data-dir` everywhere, the latter setting `HANAIKADA_DATA_DIR` for the
+  command; `webui` keeps its own `--data-dir`; alphabetical help). Import heavy modules inside
   the function. Private `typer._click` imports stay in `factory.py`; Typer has no upper pin.
 - Commit and open PRs only when the user asks.
 
