@@ -247,7 +247,8 @@ served only inside output folders** (an install root never serves `config.json`)
 ## 8. Server and API
 
 - **Start-up:** the server binds its socket itself and hands it to uvicorn (no gap between check
-  and serve): up to 20 ports upward on `EADDRINUSE`/`EACCES`, one with `strict_port`, 0 = any;
+  and serve): on `EADDRINUSE`/`EACCES` every port upward to 65535, then from 1024 up to the
+  requested one (no attempt cap; any other error fails at once), one with `strict_port`, 0 = any;
   `SO_EXCLUSIVEADDRUSE` on Windows, `SO_REUSEADDR` elsewhere. `webui` prints `SERVER_READY
   url=…` and writes `server.json` (host, port, url, pid) atomically; it is ignored when the pid
   is dead and removed only by its writer. Binding off loopback needs an access token.
